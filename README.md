@@ -28,3 +28,8 @@
 
 ### After added 3 people in level1 of user1 who has owner as referrer
 ![Level1TrxBalAfter3referrer](<images/3.Level1TrxBalAfter3referrer.png>)
+
+### After second referral transfer amount to contract
+![alt text](<images/4.2ndreferrerAmountTransferToContract.png>)
+
+![alt text](images/4.1.2ndReferralAmountTransferChanges.png)
