@@ -1,9 +1,7 @@
-pragma solidity 0.5.12;
+pragma solidity 0.8.27;
 
 contract SmartGenie {
     address public ownerWallet;
-    
- 
  
     struct UserStruct {
         bool isExist;
@@ -89,7 +87,7 @@ contract SmartGenie {
 
             regUser(refId);
         }
-        else revert('Please buy first level for 300 TRX');
+        else revert('Please buy first level for 150 TRX');
     }
     
     
