@@ -87,10 +87,12 @@ contract SmartGenie {
         // Add the new user as referral for the given referrer id
         users[userList[_referrerID]].referral.push(msg.sender);
        
-        // Payment for the level
-        payForLevel(1, msg.sender);
-            
-    
+        //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
+        if(users[userList[_referrerID]].referral.length != 2) {
+            // Payment for the level
+            payForLevel(1, msg.sender);
+        }
+                
         // registration done. Emit event
         emit regLevelEvent(msg.sender, userList[_referrerID], now);
     }
@@ -99,32 +101,31 @@ contract SmartGenie {
     // Payment function for a level
     function payForLevel(uint _level, address _user) internal {
         address payer;
-        uint level;
+        bool sent = false;
+        
         // Check level and get referrer id for the user
         if(_level == 1) {
-            level = _level;
              if(users[userList[users[_user].referrerID]].referral.length == 1) {
                  payer = userList[users[_user].referrerID];
+                 sent = address(uint160(payer)).send(LEVEL_PRICE[_level]);
              } else if(users[userList[users[_user].referrerID]].referral.length == 3) {
                  address referrer = userList[users[_user].referrerID];
                  payer = userList[users[referrer].referrerID];
-                 level = _level+1;
+                 sent = recipient.call{value: LEVEL_PRICE[_level]}("");
              } else {
                  //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
                  payer = address(this);
+                 sent = address(uint160(payer)).send(LEVEL_PRICE[_level]);
             }
         }
         
-        bool sent = false;
-            sent = address(uint160(payer)).send(LEVEL_PRICE[level]);
-
             if (sent) {
-                emit getMoneyForLevelEvent(payer, msg.sender, level, now);
+                emit getMoneyForLevelEvent(payer, msg.sender, _level, now);
             }
             if(!sent) {
-                emit lostMoneyForLevelEvent(payer, msg.sender, level, now);
+                emit lostMoneyForLevelEvent(payer, msg.sender, _level, now);
     
-                payForLevel(level, payer);
+                payForLevel(_level, payer);
             }
     }
     
@@ -133,5 +134,17 @@ contract SmartGenie {
         return address(this).balance;
     }
     
+    // Get second upline referrer
+    function getSecondUpline(address _user) public view returns(address) {
+        address referrer = userList[users[_user].referrerID];
+        address payer = userList[users[referrer].referrerID];
+        return address(uint160(payer));
+    }
+    
+     // Get first upline referrer
+    function getFirstUpline(address _user) public view returns(address) {
+        address referrer = userList[users[_user].referrerID];
+        return address(uint160(referrer));
+    }
     
 }
