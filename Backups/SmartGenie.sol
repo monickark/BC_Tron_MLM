@@ -1,23 +1,8 @@
-/**
- *Submitted for verification at Tronscan.org on 2022-03-02
-*/
-/*                                                   
- *
- * SmartGenie Decentralized Earning Platform
- * URL: https://smartgenie.io
- * 
- */
- 
 pragma solidity 0.5.12;
 
 contract SmartGenie {
     address public ownerWallet;
     
- 
-    SmartGenie public oldSC = SmartGenie(0x41a28a124c1d2b552d6e81b739bfe90a2230b9ce25);
-    uint oldSCUserId = 1;
-    
-
     struct UserStruct {
         bool isExist;
         uint id;
@@ -45,16 +30,18 @@ contract SmartGenie {
     constructor() public {
         ownerWallet = msg.sender;
 
-        LEVEL_PRICE[1] = 300 trx;
-        LEVEL_PRICE[2] = 600 trx;
-        LEVEL_PRICE[3] = 1250 trx;
-        LEVEL_PRICE[4] = 2500 trx;
-        LEVEL_PRICE[5] = 5000 trx;
-        LEVEL_PRICE[6] = 10000 trx;
-        LEVEL_PRICE[7] = 25000 trx;
-        LEVEL_PRICE[8] = 50000 trx;
-        LEVEL_PRICE[9] = 100000 trx;
-        LEVEL_PRICE[10] = 200000 trx;
+        LEVEL_PRICE[1] = 150 trx;
+        LEVEL_PRICE[2] = LEVEL_PRICE[1]*2;
+        LEVEL_PRICE[3] = LEVEL_PRICE[2]*2;
+        LEVEL_PRICE[4] = LEVEL_PRICE[3]*2;
+        LEVEL_PRICE[5] = LEVEL_PRICE[4]*2;
+        LEVEL_PRICE[6] = LEVEL_PRICE[5]*2;
+        LEVEL_PRICE[7] = LEVEL_PRICE[6]*2;
+        LEVEL_PRICE[8] = LEVEL_PRICE[7]*2;
+        LEVEL_PRICE[9] = LEVEL_PRICE[8]*2;
+        LEVEL_PRICE[10] = LEVEL_PRICE[9]*2;
+        LEVEL_PRICE[11] = LEVEL_PRICE[10]*2;
+        LEVEL_PRICE[12] = LEVEL_PRICE[11]*2;
 
         UserStruct memory userStruct;
         currUserID++;
@@ -76,36 +63,7 @@ contract SmartGenie {
     
     
 
-    function () external payable {
-        uint level;
-
-        if(msg.value == LEVEL_PRICE[1]) level = 1;
-        else if(msg.value == LEVEL_PRICE[2]) level = 2;
-        else if(msg.value == LEVEL_PRICE[3]) level = 3;
-        else if(msg.value == LEVEL_PRICE[4]) level = 4;
-        else if(msg.value == LEVEL_PRICE[5]) level = 5;
-        else if(msg.value == LEVEL_PRICE[6]) level = 6;
-        else if(msg.value == LEVEL_PRICE[7]) level = 7;
-        else if(msg.value == LEVEL_PRICE[8]) level = 8;
-        else if(msg.value == LEVEL_PRICE[9]) level = 9;
-        else if(msg.value == LEVEL_PRICE[10]) level = 10;
-        else revert('Incorrect Value send');
-
-        if(users[msg.sender].isExist) buyLevel(level);
-        else if(level == 1) {
-            uint refId = 0;
-            address referrer = bytesToAddress(msg.data);
-
-            if(users[referrer].isExist) refId = users[referrer].id;
-            else revert('Incorrect referrer');
-
-            regUser(refId);
-        }
-        else revert('Please buy first level for 300 TRX');
-    }
-
     function regUser(uint _referrerID) public payable {
-        require(address(oldSC) == address(0), 'Initialize not finished');
         require(!users[msg.sender].isExist, 'User exist');
         require(_referrerID > 0 && _referrerID <= currUserID, 'Incorrect referrer Id');
         require(msg.value == LEVEL_PRICE[1], 'Incorrect Value');
@@ -157,79 +115,32 @@ contract SmartGenie {
         emit buyLevelEvent(msg.sender, _level, now);
     }
     
-    function syncWithOldSC(uint limit) public {
-        require(address(oldSC) != address(0), 'Initialize closed');
-        require(msg.sender == ownerWallet, 'Access denied');
-
-        for(uint i = 0; i < limit; i++) {
-            address user = oldSC.userList(oldSCUserId);
-            (bool isExist,,, uint referrerID) = oldSC.users(user);
-
-            if(isExist) {
-                oldSCUserId++;
-                
-                address ref = oldSC.userList(referrerID);
-
-                if(!users[user].isExist && users[ref].isExist) {
-                    users[user].isExist = true;
-                    users[user].id = ++currUserID;
-                    users[user].referrerID = users[ref].id;
-                    users[user].joined = users[ref].joined;
-
-
-                    userList[currUserID] = user;
-                    users[ref].referral.push(user);
-
-                    for(uint j = 1; j <= 8; j++) {
-                        users[user].levelExpired[j] = oldSC.viewUserLevelExpired(user, j);
-                    }
-
-                    emit regLevelEvent(user, ref, block.timestamp);
-                }
-            }
-            else break;
-        }
-    }
-
-    function syncClose() external {
-        require(address(oldSC) != address(0), 'Initialize already closed');
-        require(msg.sender == ownerWallet, 'Access denied');
-
-        oldSC = SmartGenie(0);
-    }
-
     function payForLevel(uint _level, address _user) internal {
         address referer;
         address referer1;
         address referer2;
         address referer3;
-        address referer4;
+        
 
-        if(_level == 1 || _level == 6) {
+        if(_level == 1 || _level == 5 || _level == 9) {
             referer = userList[users[_user].referrerID];
         }
-        else if(_level == 2 || _level == 7) {
+        else if(_level == 2 || _level == 6 || _level == 10) {
             referer1 = userList[users[_user].referrerID];
             referer = userList[users[referer1].referrerID];
         }
-        else if(_level == 3 || _level == 8) {
+        else if(_level == 3 || _level == 7 || _level == 11) {
             referer1 = userList[users[_user].referrerID];
             referer2 = userList[users[referer1].referrerID];
             referer = userList[users[referer2].referrerID];
         }
-        else if(_level == 4 || _level == 9) {
+        else if(_level == 4 || _level == 8 || _level == 12) {
             referer1 = userList[users[_user].referrerID];
             referer2 = userList[users[referer1].referrerID];
             referer3 = userList[users[referer2].referrerID];
             referer = userList[users[referer3].referrerID];
         }
-        else if(_level == 5 || _level == 10) {
-            referer1 = userList[users[_user].referrerID];
-            referer2 = userList[users[referer1].referrerID];
-            referer3 = userList[users[referer2].referrerID];
-            referer4 = userList[users[referer3].referrerID];
-            referer = userList[users[referer4].referrerID];
-        }
+        
 
         if(!users[referer].isExist) referer = userList[1];
 

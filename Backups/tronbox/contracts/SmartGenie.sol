@@ -12,6 +12,7 @@ contract SmartGenie {
         address[] referral;
         mapping(uint => uint) levelExpired;
         uint joined;
+        
     }
     
     
@@ -22,14 +23,17 @@ contract SmartGenie {
     uint public currUserID = 0;
     uint256 public promAmt = 0;
     uint256 public ursAmt = 0;
+    uint256 public regFee = 500 trx;
     
     event regLevelEvent(address indexed _user, address indexed _referrer, uint _time);
     event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
     event lostMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
     
-    constructor() public {
+    constructor(address _ursWallet, address _promotionWallet) public {
         // Contract deployer will be the owner wallet 
         ownerWallet = msg.sender;
+        ursWallet = _ursWallet;
+        promotionWallet = _promotionWallet;
         
         // Setting the price for buying each level
         LEVEL_PRICE[1] = 150 trx;
@@ -66,7 +70,7 @@ contract SmartGenie {
         // Referrer is should not be empty or caller's own id
         require(_referrerID > 0 && _referrerID <= currUserID, 'Incorrect referrer Id');
         // Caller must provide first level 'LEVEL_PRICE' for registration
-        // require(msg.value == regFee, 'Incorrect Value');
+        require(msg.value == regFee, 'Incorrect Value');
 
         // Conditions verified. Now Registering user
         UserStruct memory userStruct;
@@ -117,23 +121,30 @@ contract SmartGenie {
         address payer;
         bool sent = false;
         uint256 level;
+        uint256 length = users[userList[users[_user].referrerID]].referral.length;
         if(_level == 1) {
             level = _level;
              // For users referrer level 1 pay reg amount to referrer
-             if(users[userList[users[_user].referrerID]].referral.length == 1) {
+             if( length == 1 || length % 4 == 0) {
                  payer = userList[users[_user].referrerID];
 
              } 
              // For users referrer level 3 pay next level active to second upline
-             else if (users[userList[users[_user].referrerID]].referral.length == 3) {
-                payer = getSecondUpline(msg.sender);
+             else if (length == 3) {
+               payer = getSecondUpline(userList[users[_user].referrerID]);
+               if(payer == address(0)) {
+                   payer = getSecondUpline(msg.sender);
+               }
+               level = _level+1;
+             } else {
+               payer = users[userList[users[_user].referrerID]];
+               if(payer == address(0)) {
+                   payer = getSecondUpline(msg.sender);
+               }
                level = _level+1;
              }
-             // For users referrer level 4 pay level fee to referrer
-             else if (users[userList[users[_user].referrerID]].referral.length == 4) {
-                payer = userList[users[_user].referrerID];
-               level = _level;
              }
+            
               sent = address(uint160(payer)).send(LEVEL_PRICE[level]);
     
                 if (sent) {
