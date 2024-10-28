@@ -12,7 +12,8 @@ contract SmartGenie {
         address[] referral;
         mapping(uint => uint) levelExpired;
         uint joined;
-        
+        uint paymentCount;
+        uint legCount;
     }
     
     
@@ -46,6 +47,8 @@ contract SmartGenie {
         LEVEL_PRICE[8] = LEVEL_PRICE[7]*2;
         LEVEL_PRICE[9] = LEVEL_PRICE[8]*2;
         LEVEL_PRICE[10] = LEVEL_PRICE[9]*2;
+        LEVEL_PRICE[11] = LEVEL_PRICE[10]*2;
+        LEVEL_PRICE[12] = LEVEL_PRICE[11]*2;
 
         // Create contract deployer as first user
         UserStruct memory userStruct;
@@ -56,7 +59,9 @@ contract SmartGenie {
             id: currUserID,
             referrerID: 0,
             referral: new address[](0),
-            joined:now
+            joined:now,
+            paymentCount:0,
+            legCount:0
         });
         users[ownerWallet] = userStruct;
         userList[currUserID] = ownerWallet;
@@ -82,7 +87,9 @@ contract SmartGenie {
             id: currUserID,
             referrerID: _referrerID,
             referral: new address[](0),
-            joined:now
+            joined:now,
+            paymentCount:0,
+            legCount:0
         });
         users[msg.sender] = userStruct;
         
@@ -104,7 +111,7 @@ contract SmartGenie {
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
         if(referrerReferralLength != 2) {
             // Payment for the level
-           (payer_, sent_, amt_, level_) =  payForLevel(1, msg.sender);
+           (payer_, sent_, amt_, level_) =  payment(1, msg.sender);
         } 
          
         // registration done. Emit event
@@ -114,47 +121,68 @@ contract SmartGenie {
 
     }
     
-    
-   
     // Payment function for a level
-    function payForLevel(uint _level, address _user) internal returns (address, bool, uint256, uint256){
+    function payment(uint _level, address _user) internal returns (address, bool, uint256, uint256){
         address payer;
-        bool sent = false;
-        uint256 level;
-        uint256 length = users[userList[users[_user].referrerID]].referral.length;
-        if(_level == 1) {
-            level = _level;
-             // For users referrer level 1 pay reg amount to referrer
+
+        uint256 length = users[userList[users[_user].referrerID]].referral.length;             
+        // For users referrer level 1 pay reg amount to referrer
+             
              if( length == 1 || length % 4 == 0) {
                  payer = userList[users[_user].referrerID];
-
+                 users[payer].paymentCount = users[payer].paymentCount+1;
+                 payForLevel(_level,msg.sender);
              } 
-             // For users referrer level 3 pay next level active to second upline
+             // For users referrer payment count is 3 pay  for next level active to active second upline
              else if (length == 3) {
-               payer = getSecondUpline(userList[users[_user].referrerID]);
-               if(payer == address(0)) {
-                   payer = getSecondUpline(msg.sender);
-               }
-               level = _level+1;
-             } else {
-               payer = users[userList[users[_user].referrerID]];
-               if(payer == address(0)) {
-                   payer = getSecondUpline(msg.sender);
-               }
-               level = _level+1;
-             }
-             }
-            
-              sent = address(uint160(payer)).send(LEVEL_PRICE[level]);
+               payForLevel(_level+1,msg.sender);
+             } 
+    }
     
-                if (sent) {
-                    emit getMoneyForLevelEvent(payer, msg.sender, level, now);
-                }
-                
-                return (payer, sent, LEVEL_PRICE[level], level);
+    
+    function payForLevel(uint _level, address _user) internal {
+        address referer;
+        address referer1;
+        address referer2;
+        address referer3;
+        
+
+        if(_level == 1 || _level == 5 || _level == 9) {
+            referer = userList[users[_user].referrerID];
+        }
+        else if(_level == 2 || _level == 6 || _level == 10) {
+            referer1 = userList[users[_user].referrerID];
+            referer = userList[users[referer1].referrerID];
+        }
+        else if(_level == 3 || _level == 7 || _level == 11) {
+            referer1 = userList[users[_user].referrerID];
+            referer2 = userList[users[referer1].referrerID];
+            referer = userList[users[referer2].referrerID];
+        }
+        else if(_level == 4 || _level == 8 || _level == 12) {
+            referer1 = userList[users[_user].referrerID];
+            referer2 = userList[users[referer1].referrerID];
+            referer3 = userList[users[referer2].referrerID];
+            referer = userList[users[referer3].referrerID];
         }
         
+        
+        if(!users[referer].isExist) referer = userList[1];
+        
+        users[referer].paymentCount = users[referer].paymentCount+1;
+        bool sent = false;
+        sent = address(uint160(referer)).send(LEVEL_PRICE[_level]);
+
+        if (sent) {
+            emit getMoneyForLevelEvent(referer, msg.sender, _level, now);
+        }
+        if(!sent) {
+            emit lostMoneyForLevelEvent(referer, msg.sender, _level, now);
+
+           // payForLevel(_level, referer);
+        }
     }
+   
     // Transfer Promotion Value
     function transferPromotion(uint256 _amount) public returns (bool) {
         require(msg.sender == promotionWallet, "Invalid caller");
@@ -178,32 +206,6 @@ contract SmartGenie {
     function getContractBalance() public view returns(uint256) {
         return address(this).balance;
     }
-    
-    // Get referrals list of a user
-    function getUserReferral(address _user) public view returns(address[] memory) {
-        return users[_user].referral;
-    }
-    
-    // Get referrals length of user
-    function getUserReferralLength(address _user) public view returns(uint256) {
-        return users[userList[users[_user].referrerID]].referral.length;
-    }
-    
-    // Get referrals length of the users's referrer
-    function getUserReferrersReferralLength(address _user) public view returns(uint256) {
-        return users[userList[users[_user].referrerID]].referral.length;
-    }
-    
-    // Get ETH Address
-    function getETHAddress(address _user) public pure returns(address) {
-        return _user;
-    }
-    
-    // Get second upline referrer
-    function getSecondUpline(address _user) public view returns(address) {
-        address referrer = userList[users[_user].referrerID];
-        address payer = userList[users[referrer].referrerID];
-        return payer;
-    }
+
     
 }
