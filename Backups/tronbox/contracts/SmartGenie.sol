@@ -69,7 +69,7 @@ contract SmartGenie {
     }
     
     // User Registraion must provide Refferrer Id
-    function regUser(uint _referrerID) public payable returns (address, bool, uint256, uint256){
+    function regUser(uint _referrerID) public payable {
         // Caller should not registered already, so his existence in 'users'
         require(!users[msg.sender].isExist, 'User exist');
         // Referrer is should not be empty or caller's own id
@@ -102,43 +102,34 @@ contract SmartGenie {
         // update split wallet balances
         ursAmt += LEVEL_PRICE[1];
         promAmt += LEVEL_PRICE[1];
-        address payer_;
-        bool sent_;
-        uint256 amt_;
-        uint256 level_;
         
         //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
         if(referrerReferralLength != 2) {
             // Payment for the level
-           (payer_, sent_, amt_, level_) =  payment(1, msg.sender);
+            payment(1, msg.sender);
         } 
          
         // registration done. Emit event
         emit regLevelEvent(msg.sender, userList[_referrerID], now);
-        
-        return (payer_, sent_, amt_, level_);
 
     }
     
     // Payment function for a level
-    function payment(uint _level, address _user) internal returns (address, bool, uint256, uint256){
+    function payment(uint _level, address _user) internal {
         address payer;
 
-        uint256 length = users[userList[users[_user].referrerID]].referral.length;             
-        // For users referrer level 1 pay reg amount to referrer
-             
-             if( length == 1 || length % 4 == 0) {
+        uint256 length = users[userList[users[_user].referrerID]].referral.length; 
+
+            if( length == 3 ){
+                 payForLevel(_level+1,msg.sender);
+            } else if (length % 4 == 0){
                  payer = userList[users[_user].referrerID];
-                 users[payer].paymentCount = users[payer].paymentCount+1;
-                 payForLevel(_level,msg.sender);
-             } 
-             // For users referrer payment count is 3 pay  for next level active to active second upline
-             else if (length == 3) {
-               payForLevel(_level+1,msg.sender);
+                 payForLevel(_level,payer);
+             } else {
+                payForLevel(_level,msg.sender);
              } 
     }
-    
     
     function payForLevel(uint _level, address _user) internal {
         address referer;
