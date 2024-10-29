@@ -122,7 +122,8 @@ contract SmartGenie {
         uint256 length = users[userList[users[_user].referrerID]].referral.length; 
 
             if( length == 3 ){
-                 payForLevel(_level+1,msg.sender);
+                 payer = userList[users[_user].referrerID];
+                 payForLevel(_level+1,payer);
             } else if (length % 4 == 0){
                  payer = userList[users[_user].referrerID];
                  payForLevel(_level,payer);
