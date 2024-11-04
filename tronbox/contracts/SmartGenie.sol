@@ -12,19 +12,19 @@ contract SmartGenie {
         address[] referral;
         mapping(uint => uint) levelExpired;
         uint joined;
-        uint paymentCount;
+        mapping(uint => uint) incomeCount;
+        uint[] levelEligibility;
         uint legCount;
     }
     
-    
     mapping(uint => uint) public LEVEL_PRICE;
-    mapping (address => UserStruct) public users;
-    mapping (uint => address) public userList;
+    mapping(address => UserStruct) public users;
+    mapping(uint => address) public userList;
     
     uint public currUserID = 0;
-    uint256 public promAmt = 0;
-    uint256 public ursAmt = 0;
-    uint256 public regFee = 500 trx;
+    uint256 promAmt = 0;
+    uint256 ursAmt = 0;
+    uint256 regFee = 500 trx;
     
     event regLevelEvent(address indexed _user, address indexed _referrer, uint _time);
     event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
@@ -60,7 +60,7 @@ contract SmartGenie {
             referrerID: 0,
             referral: new address[](0),
             joined:now,
-            paymentCount:0,
+            levelEligibility: new uint[](0),
             legCount:0
         });
         users[ownerWallet] = userStruct;
@@ -88,7 +88,7 @@ contract SmartGenie {
             referrerID: _referrerID,
             referral: new address[](0),
             joined:now,
-            paymentCount:0,
+            levelEligibility: new uint[](0),
             legCount:0
         });
         users[msg.sender] = userStruct;
@@ -117,19 +117,34 @@ contract SmartGenie {
     
     // Payment function for a level
     function payment(uint _level, address _user) internal {
+        
         address payer;
-
         uint256 length = users[userList[users[_user].referrerID]].referral.length; 
-
-            if( length == 3 ){
-                 payer = userList[users[_user].referrerID];
-                 payForLevel(_level+1,payer);
-            } else if (length % 4 == 0){
-                 payer = userList[users[_user].referrerID];
-                 payForLevel(_level,payer);
-             } else {
-                payForLevel(_level,msg.sender);
-             } 
+        uint256 _levelEligibility;
+        if (length == 3) {
+             payer = userList[users[_user].referrerID];
+             uint256 _lelevel = users[payer].levelEligibility.length-1;
+             _levelEligibility = users[payer].levelEligibility[_lelevel];
+             
+                while (_levelEligibility < 2) {
+                    if(users[payer].referrerID == 1 || users[payer].referrerID == 2 ) {break;}
+                    
+                    address payer1 = userList[users[payer].referrerID];
+                    payer = userList[users[payer1].referrerID];
+                    
+                    uint256 _lelevel1 = users[payer].levelEligibility.length-1;
+                    _levelEligibility = users[payer].levelEligibility[_lelevel1];
+                }
+                
+             users[userList[users[_user].referrerID]].levelEligibility.push(_level+1);
+             payForLevel(_level+1,payer);
+        } else if (length % 4 == 0) {
+             payer = userList[users[_user].referrerID];
+             payForLevel(_level,payer);
+        } else {
+            users[userList[users[_user].referrerID]].levelEligibility.push(_level);
+            payForLevel(_level,msg.sender);
+        } 
     }
     
     function payForLevel(uint _level, address _user) internal {
@@ -138,7 +153,6 @@ contract SmartGenie {
         address referer2;
         address referer3;
         
-
         if(_level == 1 || _level == 5 || _level == 9) {
             referer = userList[users[_user].referrerID];
         }
@@ -158,10 +172,10 @@ contract SmartGenie {
             referer = userList[users[referer3].referrerID];
         }
         
-        
         if(!users[referer].isExist) referer = userList[1];
         
-        users[referer].paymentCount = users[referer].paymentCount+1;
+        users[referer].incomeCount[_level] = users[referer].incomeCount[_level]+1;
+        
         bool sent = false;
         sent = address(uint160(referer)).send(LEVEL_PRICE[_level]);
 
@@ -170,8 +184,6 @@ contract SmartGenie {
         }
         if(!sent) {
             emit lostMoneyForLevelEvent(referer, msg.sender, _level, now);
-
-           // payForLevel(_level, referer);
         }
     }
    
@@ -198,6 +210,14 @@ contract SmartGenie {
     function getContractBalance() public view returns(uint256) {
         return address(this).balance;
     }
-
     
+    // Get User Level Eligiblities balance
+    function getUserLevelEligibility(address _user) public view returns(uint256[] memory) {
+        return users[_user].levelEligibility;
+    }
+    
+     // Get User Level Eligiblities balance
+    function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
+        return users[_user].incomeCount[_level];
+    }
 }
