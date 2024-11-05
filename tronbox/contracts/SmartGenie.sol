@@ -112,7 +112,6 @@ contract SmartGenie {
          
         // registration done. Emit event
         emit regLevelEvent(msg.sender, userList[_referrerID], now);
-
     }
     
     // Payment function for a level
@@ -121,72 +120,60 @@ contract SmartGenie {
         address payer;
         uint256 length = users[userList[users[_user].referrerID]].referral.length; 
         uint256 _levelEligibility;
+        
         if (length == 3) {
-             payer = userList[users[_user].referrerID];
-             uint256 _lelevel = users[payer].levelEligibility.length-1;
-             _levelEligibility = users[payer].levelEligibility[_lelevel];
+             address referrer = userList[users[_user].referrerID]; //7
              
-                while (_levelEligibility < 2) {
-                    if(users[payer].referrerID == 1 || users[payer].referrerID == 2 ) {break;}
+            for(int i=0; i<12; i++) { 
+                 uint256 _lelevel = users[referrer].levelEligibility.length-1;
+                 _levelEligibility = users[referrer].levelEligibility[_lelevel]; //1  
+                 
+                 if(_levelEligibility < 2) { 
+                     address payer1 = userList[users[referrer].referrerID]; //3
+                     referrer = userList[users[payer1].referrerID]; //2
+                    if(!users[referrer].isExist || users[payer1].referrerID == 1 || users[payer1].referrerID ==2) { 
+                        payer = userList[users[payer1].referrerID];
+                        break;
+                    } 
+                    payer = referrer; //2
                     
-                    address payer1 = userList[users[payer].referrerID];
-                    payer = userList[users[payer1].referrerID];
+                 } else {
+                     payer = referrer; // 2
+                     break;
+                 }
+            }
+            
+            _level = _level+1;
+            users[userList[users[_user].referrerID]].levelEligibility.push(_level);
                     
-                    uint256 _lelevel1 = users[payer].levelEligibility.length-1;
-                    _levelEligibility = users[payer].levelEligibility[_lelevel1];
-                }
-                
-             users[userList[users[_user].referrerID]].levelEligibility.push(_level+1);
-             payForLevel(_level+1,payer);
-        } else if (length % 4 == 0) {
-             payer = userList[users[_user].referrerID];
-             payForLevel(_level,payer);
+        }
+        
+        else if (length % 4 == 0) {
+             address referer = userList[users[_user].referrerID];
+             payer = userList[users[referer].referrerID];
+        
         } else {
             users[userList[users[_user].referrerID]].levelEligibility.push(_level);
-            payForLevel(_level,msg.sender);
+            payer = userList[users[_user].referrerID];
         } 
-    }
-    
-    function payForLevel(uint _level, address _user) internal {
-        address referer;
-        address referer1;
-        address referer2;
-        address referer3;
         
-        if(_level == 1 || _level == 5 || _level == 9) {
-            referer = userList[users[_user].referrerID];
-        }
-        else if(_level == 2 || _level == 6 || _level == 10) {
-            referer1 = userList[users[_user].referrerID];
-            referer = userList[users[referer1].referrerID];
-        }
-        else if(_level == 3 || _level == 7 || _level == 11) {
-            referer1 = userList[users[_user].referrerID];
-            referer2 = userList[users[referer1].referrerID];
-            referer = userList[users[referer2].referrerID];
-        }
-        else if(_level == 4 || _level == 8 || _level == 12) {
-            referer1 = userList[users[_user].referrerID];
-            referer2 = userList[users[referer1].referrerID];
-            referer3 = userList[users[referer2].referrerID];
-            referer = userList[users[referer3].referrerID];
-        }
+        /* PROCEEDS PAYMENT */
+        if(!users[payer].isExist) payer = userList[1];
         
-        if(!users[referer].isExist) referer = userList[1];
-        
-        users[referer].incomeCount[_level] = users[referer].incomeCount[_level]+1;
+        users[payer].incomeCount[_level] = users[payer].incomeCount[_level]+1;
         
         bool sent = false;
-        sent = address(uint160(referer)).send(LEVEL_PRICE[_level]);
+        sent = address(uint160(payer)).send(LEVEL_PRICE[_level]);
 
         if (sent) {
-            emit getMoneyForLevelEvent(referer, msg.sender, _level, now);
+            emit getMoneyForLevelEvent(payer, msg.sender, _level, now);
         }
         if(!sent) {
-            emit lostMoneyForLevelEvent(referer, msg.sender, _level, now);
+            emit lostMoneyForLevelEvent(payer, msg.sender, _level, now);
         }
     }
-   
+    
+    
     // Transfer Promotion Value
     function transferPromotion(uint256 _amount) public returns (bool) {
         require(msg.sender == promotionWallet, "Invalid caller");
@@ -220,4 +207,11 @@ contract SmartGenie {
     function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
         return users[_user].incomeCount[_level];
     }
+    
+     // Get Referral users
+    function getUserReferrals(address _user) public view returns(address[] memory) {
+        return users[_user].referral;
+    }
+
+    
 }
