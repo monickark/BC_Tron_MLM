@@ -52,7 +52,7 @@ replace private key in tronbox.js
 ### Handling tronbox
 tronbox compile
 tronbox migrate
-
+tronbox test
 
 
 
