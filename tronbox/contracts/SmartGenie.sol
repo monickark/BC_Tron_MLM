@@ -1,6 +1,13 @@
 pragma solidity 0.5.12;
 
 contract SmartGenie {
+    // 1. 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
+    // 2. 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
+    // 3. 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
+    // 6. 0x17F6AD8Ef982297579C203069C1DbfFE4348c372
+    // 7. 0x5c6B0f7Bf3E7ce046039Bd8FABdfD3f9F5021678
+    // 8. 0x03C6FcED478cBbC9a4FAB34eF9f40767739D1Ff7
+    
     address public ownerWallet;
     address public ursWallet;
     address public promotionWallet;
@@ -65,7 +72,6 @@ contract SmartGenie {
         });
         users[ownerWallet] = userStruct;
         userList[currUserID] = ownerWallet;
-        
     }
     
     // User Registraion must provide Refferrer Id
@@ -120,9 +126,10 @@ contract SmartGenie {
         address payer;
         uint256 length = users[userList[users[_user].referrerID]].referral.length; 
         uint256 _levelEligibility;
-        
+        bool loop = false;
         if (length == 3) {
-             address referrer = userList[users[_user].referrerID]; //7
+             address referrer = userList[users[_user].referrerID]; //3
+             users[referrer].incomeCount[_level] = users[referrer].incomeCount[_level]+2;
              
             for(int i=0; i<12; i++) { 
                  uint256 _lelevel = users[referrer].levelEligibility.length-1;
@@ -148,49 +155,65 @@ contract SmartGenie {
                     
         }
         
-        else if (length % 4 == 0) {
-             address referer = userList[users[_user].referrerID];
-             payer = userList[users[referer].referrerID];
-        
+        else if (length >= 4 && length % 4 == 0) { // 18 7
+             address referrer;
+             if(!loop) {
+                 referrer = userList[users[_user].referrerID]; //8 6
+                 users[referrer].incomeCount[_level] = users[referrer].incomeCount[_level]+1; //8 6
+             } else { referrer = _user; }
+             
+             payer = userList[users[referrer].referrerID]; //7 5
         } else {
             users[userList[users[_user].referrerID]].levelEligibility.push(_level);
-            payer = userList[users[_user].referrerID];
+            payer = userList[users[_user].referrerID]; //2
         } 
-        
+        uint256 payerTempPaymentCount = users[payer].incomeCount[_level]+1;
+        // temp increment payer income count to check actual will inctrement during payment
+        if(payerTempPaymentCount >= 4 &&
+          payerTempPaymentCount % 4 == 0  &&
+          users[payer].referrerID!=0
+        ) {
+           users[payer].incomeCount[_level] = users[payer].incomeCount[_level]+1; 
+           loop = true;
+           payment(_level, payer); //7(4)
+           
+        } else 
+        {
         /* PROCEEDS PAYMENT */
-        if(!users[payer].isExist) payer = userList[1];
-        
-        users[payer].incomeCount[_level] = users[payer].incomeCount[_level]+1;
-        
-        bool sent = false;
-        sent = address(uint160(payer)).send(LEVEL_PRICE[_level]);
-
-        if (sent) {
-            emit getMoneyForLevelEvent(payer, msg.sender, _level, now);
-        }
-        if(!sent) {
-            emit lostMoneyForLevelEvent(payer, msg.sender, _level, now);
+            if(!users[payer].isExist) payer = userList[1];
+            
+            users[payer].incomeCount[_level]= users[payer].incomeCount[_level]+1; //7 6
+            
+            bool sent = false;
+            sent = address(uint160(payer)).send(LEVEL_PRICE[_level]);
+    
+            if (sent) {
+                emit getMoneyForLevelEvent(payer, msg.sender, _level, now);
+            }
+            if(!sent) {
+                emit lostMoneyForLevelEvent(payer, msg.sender, _level, now);
+            }
         }
     }
     
     
-    // Transfer Promotion Value
-    function transferPromotion(uint256 _amount) public returns (bool) {
-        require(msg.sender == promotionWallet, "Invalid caller");
-        require(_amount <= promAmt, "Invalid Amount");
-         bool sent = false;
-           sent = address(uint160(promotionWallet)).send(_amount);
-           return sent;
-    }
+    // // Transfer Promotion Value
+    // function transferPromotion(uint256 _amount) public returns (bool) {
+    //     require(msg.sender == promotionWallet, "Invalid caller");
+    //     require(_amount <= promAmt, "Invalid Amount");
+    //      bool sent = false;
+    //       sent = address(uint160(promotionWallet)).send(_amount);
+    //       return sent;
+    // }
      
-      // Transfer URS Value
-    function transferURS(uint256 _amount) public returns (bool) {
-        require(msg.sender == ursWallet, "Invalid caller");
-        require(_amount <= ursAmt, "Invalid Amount");
-         bool sent = false;
-           sent = address(uint160(ursWallet)).send(_amount);
-           return sent;
-    }
+    //   // Transfer URS Value
+    // function transferURS(uint256 _amount) public returns (bool) {
+    //     require(msg.sender == ursWallet, "Invalid caller");
+    //     require(_amount <= ursAmt, "Invalid Amount");
+    //      bool sent = false;
+    //       sent = address(uint160(ursWallet)).send(_amount);
+    //       return sent;
+    // }
     
     
     // Get smartcontract balance
@@ -203,14 +226,14 @@ contract SmartGenie {
         return users[_user].levelEligibility;
     }
     
-     // Get User Level Eligiblities balance
-    function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
-        return users[_user].incomeCount[_level];
-    }
-    
      // Get Referral users
     function getUserReferrals(address _user) public view returns(address[] memory) {
         return users[_user].referral;
+    }
+    
+       // Get User Level Eligiblities balance
+    function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
+        return users[_user].incomeCount[_level];
     }
 
     
