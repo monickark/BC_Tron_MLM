@@ -124,16 +124,17 @@ contract SmartGenie {
     
     // Payment function for a level 
     function payment(uint _reglevel, address _user) internal { //4
-        
         address payer;
-        uint256 length = users[userList[users[_user].referrerID]].referral.length; 
-        uint256 _levelEligibility;
         bool loop = false;
         bool isRenewal = false;
         bool isSameLeg = false;
+        uint256 levelEligibility;
+        uint256 length = users[userList[users[_user].referrerID]].referral.length; 
+        uint256 payLevel = _reglevel;
         
         if (length == 2) {
-          payer = levelUpgrade (_reglevel, _user, _levelEligibility, isSameLeg);
+          payer = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg);
+          payLevel = _reglevel+1;
         } else if (length >= 4 && length % 4 == 0) { 
            (payer, isRenewal) = levelRenewal(loop, _user, _reglevel);
         } else {
@@ -141,7 +142,7 @@ contract SmartGenie {
             payer = userList[users[_user].referrerID];
         } 
         
-       if (checkLoopRequired(payer, _reglevel, isRenewal, isSameLeg)) {
+        if (checkLoopRequired(payer, _reglevel, isRenewal, isSameLeg)) {
            payment(_reglevel, payer); 
         } else {
         /* PROCEEDS PAYMENT */
@@ -150,13 +151,13 @@ contract SmartGenie {
             users[payer].incomeCount[_reglevel]= users[payer].incomeCount[_reglevel]+1; 
             
             bool sent = false;
-            sent = address(uint160(payer)).send(LEVEL_PRICE[_reglevel]);
+            sent = address(uint160(payer)).send(LEVEL_PRICE[payLevel]);
     
             if (sent) {
-                emit getMoneyForLevelEvent(payer, msg.sender, _reglevel, now);
+                emit getMoneyForLevelEvent(payer, msg.sender, payLevel, now);
             }
             if(!sent) {
-                emit lostMoneyForLevelEvent(payer, msg.sender, _reglevel, now);
+                emit lostMoneyForLevelEvent(payer, msg.sender, payLevel, now);
             }
         }
     }
@@ -212,13 +213,13 @@ contract SmartGenie {
     function levelRenewal(bool _loop, address _user, uint256 _regLevel)internal returns(address, bool) {
         bool _isRenewal = true;
         address referrer; address payer;
-             if(!_loop) {
-                 referrer = userList[users[_user].referrerID]; 
-                 users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
-             } else { referrer = _user; }
-            
-             payer = userList[users[referrer].referrerID]; 
-            if(!users[payer].isExist) payer = userList[1];
+         if(!_loop) {
+             referrer = userList[users[_user].referrerID]; 
+             users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
+         } else { referrer = _user; }
+        
+        payer = userList[users[referrer].referrerID]; 
+        if(!users[payer].isExist) payer = userList[1];
         
         return (payer, _isRenewal);
     }
@@ -326,4 +327,6 @@ contract SmartGenie {
     function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
         return users[_user].incomeCount[_level];
     }
+
+    
 }
