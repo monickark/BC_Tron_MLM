@@ -123,33 +123,67 @@ contract SmartGenie {
     }
     
     // Payment function for a level 
-    function payment(uint _level, address _user) internal { //4
+    function payment(uint _reglevel, address _user) internal { //4
         
         address payer;
         uint256 length = users[userList[users[_user].referrerID]].referral.length; 
         uint256 _levelEligibility;
         bool loop = false;
         bool isRenewal = false;
+        bool isSameLeg = false;
+        
         if (length == 2) {
-            _level = _level+1;
-            address referrer = userList[users[_user].referrerID]; //2
-             
+          payer = levelUpgrade (_reglevel, _user, _levelEligibility, isSameLeg);
+        } else if (length >= 4 && length % 4 == 0) { 
+           (payer, isRenewal) = levelRenewal(loop, _user, _reglevel);
+        } else {
+            users[userList[users[_user].referrerID]].levelEligibility.push(_reglevel);
+            payer = userList[users[_user].referrerID];
+        } 
+        
+       if (checkLoopRequired(payer, _reglevel, isRenewal, isSameLeg)) {
+           payment(_reglevel, payer); 
+        } else {
+        /* PROCEEDS PAYMENT */
+            if(!users[payer].isExist) payer = userList[1];
+            
+            users[payer].incomeCount[_reglevel]= users[payer].incomeCount[_reglevel]+1; 
+            
+            bool sent = false;
+            sent = address(uint160(payer)).send(LEVEL_PRICE[_reglevel]);
+    
+            if (sent) {
+                emit getMoneyForLevelEvent(payer, msg.sender, _reglevel, now);
+            }
+            if(!sent) {
+                emit lostMoneyForLevelEvent(payer, msg.sender, _reglevel, now);
+            }
+        }
+    }
+    
+    function levelUpgrade(uint256 _regLevel, address _user, uint256 _levelEligibility, bool isSameLeg ) 
+             internal returns (address){
+            uint256 upLevel = _regLevel+1;
+            address payer;
+            address referrer = userList[users[_user].referrerID]; //8
+            address tempreferrer = referrer;
             // find eligible payer 
             for(int i=0; i<12; i++) { 
-                 uint256 _lelevel = users[referrer].levelEligibility.length-1;
-                 _levelEligibility = users[referrer].levelEligibility[_lelevel]; // (1)
+                 uint256 _lelevel = users[tempreferrer].levelEligibility.length-1;
+                 _levelEligibility = users[tempreferrer].levelEligibility[_lelevel]; // 
                  
                  if(_levelEligibility < 2) { 
-                     address payer1 = userList[users[referrer].referrerID]; //1
+                     address payer1 = userList[users[tempreferrer].referrerID]; //1
                      address referrer1 = userList[users[payer1].referrerID]; //0
                     if(!users[referrer1].isExist || users[payer1].referrerID == 0 || 
                         users[payer1].referrerID == 1) { 
                         referrer1 = userList[1];
                         payer = userList[1];
-                        users[referrer].incomeCount[_level-1] = users[referrer].incomeCount[_level-1]+1; 
+                        users[tempreferrer].incomeCount[_regLevel] = users[tempreferrer].incomeCount[_regLevel]+1; 
                         break;
                     } 
-                    payer = referrer1; 
+                    tempreferrer = referrer1; 
+                    payer = referrer; 
                     
                  } else {
                      payer = referrer; 
@@ -158,96 +192,64 @@ contract SmartGenie {
             }
             
             // check already locked data present for the levelUpgradePayments
-            if(!users[payer].isExist || levelUpgradePayments[_level][payer] == address(0)) {
-                levelUpgradePayments[_level][payer] == referrer;
+            if(!users[payer].isExist || levelUpgradePayments[upLevel][payer] == address(0)) {
+                levelUpgradePayments[upLevel][payer] = referrer;
+                users[payer].incomeCount[upLevel] = users[payer].incomeCount[upLevel]+1;
             } else {
-                address existingReferrer = levelUpgradePayments[_level][payer];
+                address existingReferrer = levelUpgradePayments[upLevel][payer];
                 if (isLevelUpgradeFromSameLeg(payer, existingReferrer, referrer)) {
-                    users[referrer].incomeCount[_level] = users[referrer].incomeCount[_level]+1;
-                    users[userList[users[_user].referrerID]].levelEligibility.push(_level);
+                    users[payer].incomeCount[upLevel] = users[payer].incomeCount[upLevel]+1;
+                    users[userList[users[_user].referrerID]].levelEligibility.push(upLevel);
+                    isSameLeg = true;
                 } else {
-                    levelUpgradePayments[_level][payer] = referrer;
+                    levelUpgradePayments[upLevel][payer] = referrer;
                 }
             }
-                    
-        }
-        
-        else if (length >= 4 && length % 4 == 0) { 
-             address referrer;
-             if(!loop) {
+            
+         return payer;
+    }
+    
+    function levelRenewal(bool _loop, address _user, uint256 _regLevel)internal returns(address, bool) {
+        bool _isRenewal = true;
+        address referrer; address payer;
+             if(!_loop) {
                  referrer = userList[users[_user].referrerID]; 
-                 users[referrer].incomeCount[_level] = users[referrer].incomeCount[_level]+1; 
+                 users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
              } else { referrer = _user; }
-             isRenewal = true;
+            
              payer = userList[users[referrer].referrerID]; 
-        } else {
-            users[userList[users[_user].referrerID]].levelEligibility.push(_level);
-            payer = userList[users[_user].referrerID];
-        } 
+            if(!users[payer].isExist) payer = userList[1];
         
-        uint256 tempPaymentCount = users[payer].incomeCount[_level]+1;
+        return (payer, _isRenewal);
+    }
+    
+    function checkLoopRequired(address _payer, uint256 _regLevel, bool isRenewal, bool isSameLeg) internal returns (bool) {
+        bool loop = false;
+        uint256 tempPaymentCount = users[_payer].incomeCount[_regLevel]+1;
         // temp increment payer income count to check actual will inctrement during payment
         if(tempPaymentCount >= 4 &&
           tempPaymentCount % 4 == 0  &&
-          users[payer].referrerID!=0
+          users[_payer].referrerID!=0
         ) {
-           users[payer].incomeCount[_level] = users[payer].incomeCount[_level]+1; 
+           users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
            loop = true;
-           payment(_level, payer); 
-           
         }
         // payers second level upgrade received
          else if(tempPaymentCount == 2 &&
-          users[payer].referrerID==0 && !isRenewal) {
-           if(!users[payer].isExist) payer = userList[1];
-           users[payer].incomeCount[_level] = users[payer].incomeCount[_level]+1; 
+          users[_payer].referrerID!=0 && !isRenewal && !isSameLeg) {
+           if(!users[_payer].isExist) _payer = userList[1];
+           users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
            loop = true;
-           payment(_level, payer); 
-           
         } 
         
-        // payers first level upgrade received
         else if(tempPaymentCount == 1 &&
-          users[payer].referrerID==0) {
-           if(!users[payer].isExist) payer = userList[1];
-           users[payer].incomeCount[_level] = users[payer].incomeCount[_level]+1; 
+          users[_payer].referrerID==0) {
+           if(!users[_payer].isExist) _payer = userList[1];
+           users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
         }
-        else {
-        /* PROCEEDS PAYMENT */
-            if(!users[payer].isExist) payer = userList[1];
-            
-            users[payer].incomeCount[_level]= users[payer].incomeCount[_level]+1; 
-            
-            bool sent = false;
-            sent = address(uint160(payer)).send(LEVEL_PRICE[_level]);
-    
-            if (sent) {
-                emit getMoneyForLevelEvent(payer, msg.sender, _level, now);
-            }
-            if(!sent) {
-                emit lostMoneyForLevelEvent(payer, msg.sender, _level, now);
-            }
-        }
+      
+        return loop;
     }
-    
-    
-    // // Transfer Promotion Value
-    // function transferPromotion(uint256 _amount) public returns (bool) {
-    //     require(msg.sender == promotionWallet, "Invalid caller");
-    //     require(_amount <= promAmt, "Invalid Amount");
-    //      bool sent = false;
-    //       sent = address(uint160(promotionWallet)).send(_amount);
-    //       return sent;
-    // }
-     
-    //   // Transfer URS Value
-    // function transferURS(uint256 _amount) public returns (bool) {
-    //     require(msg.sender == ursWallet, "Invalid caller");
-    //     require(_amount <= ursAmt, "Invalid Amount");
-    //      bool sent = false;
-    //       sent = address(uint160(ursWallet)).send(_amount);
-    //       return sent;
-    // }
     
     function isLevelUpgradeFromSameLeg(address _payer, address _existingReferrer, address _newReferrer) 
             internal view returns(bool){
@@ -287,6 +289,24 @@ contract SmartGenie {
     }
     
     
+    // // Transfer Promotion Value
+    // function transferPromotion(uint256 _amount) public returns (bool) {
+    //     require(msg.sender == promotionWallet, "Invalid caller");
+    //     require(_amount <= promAmt, "Invalid Amount");
+    //      bool sent = false;
+    //       sent = address(uint160(promotionWallet)).send(_amount);
+    //       return sent;
+    // }
+     
+    //   // Transfer URS Value
+    // function transferURS(uint256 _amount) public returns (bool) {
+    //     require(msg.sender == ursWallet, "Invalid caller");
+    //     require(_amount <= ursAmt, "Invalid Amount");
+    //      bool sent = false;
+    //       sent = address(uint160(ursWallet)).send(_amount);
+    //       return sent;
+    // }
+    
     // Get smartcontract balance
     function getContractBalance() public view returns(uint256) {
         return address(this).balance/1000000;
@@ -306,6 +326,4 @@ contract SmartGenie {
     function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
         return users[_user].incomeCount[_level];
     }
-
-    
 }
