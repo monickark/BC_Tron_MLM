@@ -7,6 +7,7 @@ contract SmartGenie {
     // 6. 0x17F6AD8Ef982297579C203069C1DbfFE4348c372
     // 7. 0x5c6B0f7Bf3E7ce046039Bd8FABdfD3f9F5021678
     // 8. 0x03C6FcED478cBbC9a4FAB34eF9f40767739D1Ff7
+    // 16.0x7e1382f17eb86CF86a5301D255420B9D14DD9fCA
     
     address public ownerWallet;
     address public ursWallet;
@@ -111,7 +112,7 @@ contract SmartGenie {
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
         if(referrerReferralLength != 1) {
             // Payment for the level
-            payment(1, msg.sender, referrerReferralLength);
+            payment(1, msg.sender, referrerReferralLength, false);
         } else {
             users[userList[_referrerID]].levelEligibility.push(1);
             address referrer = userList[_referrerID]; //2
@@ -123,9 +124,8 @@ contract SmartGenie {
     }
     
     // Payment function for a level 
-    function payment(uint _reglevel, address _user, uint256 length) internal { //4
+    function payment(uint _reglevel, address _user, uint256 length, bool loop) internal { //4
         address payer;
-        bool loop = false;
         bool isRenewal = false;
         bool isSameLeg = false;
         bool isPayNeed = true;
@@ -133,7 +133,7 @@ contract SmartGenie {
         uint256 payLevel = _reglevel;
         
         if (length == 2) {
-          (payer, isPayNeed) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
+          (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
           payLevel = _reglevel+1;
         } else if (length >= 4 && length % 4 == 0) { 
            (payer, isRenewal) = levelRenewal(loop, _user, _reglevel);
@@ -144,7 +144,7 @@ contract SmartGenie {
         // All txion for user1 should proceed
         if (isPayNeed || !users[payer].isExist || payer == userList[1]) {
             if (checkLoopRequired(payer, payLevel, isRenewal, isSameLeg)) {
-               payment(_reglevel, payer, length); 
+               payment(_reglevel, payer, length, true); 
             } else {
             /* PROCEEDS PAYMENT */
                 if(!users[payer].isExist) payer = userList[1];
@@ -165,7 +165,7 @@ contract SmartGenie {
     }
     
     function levelUpgrade(uint256 _regLevel, address _user, uint256 _levelEligibility, bool isSameLeg, bool isPayNeed ) 
-             internal returns (address, bool) {
+             internal returns (address, bool, bool) {
             uint256 upLevel = _regLevel+1;
            address payer; address referrer;
            // find eligible payer
@@ -188,7 +188,7 @@ contract SmartGenie {
             }
     
          users[referrer].levelEligibility.push(upLevel);
-         return (payer, isPayNeed);
+         return (payer, isPayNeed, isSameLeg);
     }
     
     function findEligiblePayer(address _user, uint256 _regLevel, uint256 _levelEligibility) internal returns (address, address){
@@ -226,8 +226,8 @@ contract SmartGenie {
         bool _isRenewal = true;
         address referrer; address payer;
          if(!_loop) {
-             referrer = userList[users[_user].referrerID]; 
-             users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
+             referrer = userList[users[_user].referrerID];
+                users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
          } else { referrer = _user; }
         
         payer = userList[users[referrer].referrerID]; 
@@ -242,7 +242,7 @@ contract SmartGenie {
         // temp increment payer income count to check actual will inctrement during payment
         if(tempPaymentCount >= 4 &&
           tempPaymentCount % 4 == 0  &&
-          users[_payer].referrerID!=0
+          users[_payer].referrerID!=0 && _regLevel == 1
         ) {
            users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
            loop = true;
@@ -271,30 +271,33 @@ contract SmartGenie {
         address[] memory payerReferrals = getUserReferrals(_payer);
         address firstLeg = _existingReferrer; 
         address secondLeg = _newReferrer;
+        
+        address tempReferrer1 = userList[users[firstLeg].referrerID]; 
         for(int i=0; i<12; i++) { 
-            address tempReferrer = userList[users[firstLeg].referrerID]; 
             bool foundReferrer = false;     
             for (uint j=0; j<payerReferrals.length; j++) {
-                if(tempReferrer == payerReferrals[j]) {
+                if(tempReferrer1 == payerReferrals[j]) {
                     firstLeg = payerReferrals[j];
                     foundReferrer = true;
                     break;
                 }
             }
             if(foundReferrer) { break;} 
+           tempReferrer1 =  userList[users[tempReferrer1].referrerID];
         }
         
+        address tempReferrer2 = userList[users[secondLeg].referrerID]; 
         for(int i=0; i<12; i++) { 
-            address tempReferrer = userList[users[secondLeg].referrerID]; 
             bool foundReferrer = false;     
             for (uint j=0; j<payerReferrals.length; j++) {
-                if(tempReferrer == payerReferrals[j]) {
+                if(tempReferrer2 == payerReferrals[j]) {
                     secondLeg = payerReferrals[j];
                     foundReferrer = true;
                     break;
                 }
             }
             if(foundReferrer) { break;} 
+            tempReferrer2 = userList[users[tempReferrer2].referrerID]; 
         }
         
         if(firstLeg == secondLeg) {isSameLeg = true;}
