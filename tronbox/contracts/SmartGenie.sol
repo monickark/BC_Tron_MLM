@@ -131,7 +131,6 @@ contract SmartGenie {
         bool isPayNeed = true;
         uint256 levelEligibility; 
         uint256 payLevel = _reglevel;
-        
         if (length == 2) {
           (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
           payLevel = _reglevel+1;
@@ -143,7 +142,8 @@ contract SmartGenie {
         
         // All txion for user1 should proceed
         if (isPayNeed || !users[payer].isExist || payer == userList[1]) {
-            if (checkLoopRequired(payer, payLevel, isRenewal, isSameLeg)) {
+            (loop, length) = checkLoopRequired(payer, payLevel, length, isRenewal, isSameLeg);
+             if(loop) {   
                payment(_reglevel, payer, length, true); 
             } else {
             /* PROCEEDS PAYMENT */
@@ -236,8 +236,9 @@ contract SmartGenie {
         return (payer, _isRenewal);
     }
     
-    function checkLoopRequired(address _payer, uint256 _regLevel, bool isRenewal, bool isSameLeg) internal returns (bool) {
+    function checkLoopRequired(address _payer, uint256 _regLevel, uint256 _length, bool isRenewal, bool isSameLeg) internal returns (bool, uint256) {
         bool loop = false;
+        uint256 length = _length;
         uint256 tempPaymentCount = users[_payer].incomeCount[_regLevel]+1;
         // temp increment payer income count to check actual will inctrement during payment
         if(tempPaymentCount >= 4 &&
@@ -245,6 +246,10 @@ contract SmartGenie {
           users[_payer].referrerID!=0 && _regLevel == 1
         ) {
            users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
+           if(_length == 3 && tempPaymentCount ==4) {
+                length = tempPaymentCount;
+           }
+           
            loop = true;
         }
         // payers second level upgrade received
@@ -252,6 +257,7 @@ contract SmartGenie {
           users[_payer].referrerID!=0 && !isRenewal && !isSameLeg) {
            if(!users[_payer].isExist) _payer = userList[1];
            users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
+           length = tempPaymentCount;
            loop = true;
         } 
         
@@ -261,7 +267,7 @@ contract SmartGenie {
            users[_payer].incomeCount[_regLevel] = users[_payer].incomeCount[_regLevel]+1; 
         }
       
-        return loop;
+        return (loop, length);
     }
     
     function isLevelUpgradeFromSameLeg(address _payer, address _existingReferrer, address _newReferrer) 
