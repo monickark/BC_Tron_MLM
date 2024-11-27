@@ -135,10 +135,6 @@ contract SmartGenie {
         
         // level upgrade
         if (length == 2) {
-            // siPayneed & !isSameleg refers the loop is for new level upgrade
-            if(isPayNeed && !isSameLeg) {
-                _reglevel = payLevel;
-            }
           (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
           payLevel = _reglevel+1;
         } 
@@ -154,7 +150,12 @@ contract SmartGenie {
         // All txion for user1 should proceed
         if (isPayNeed || !users[payer].isExist || payer == userList[1]) {
             (loop, length) = checkLoopRequired(payer, payLevel, length, isRenewal, isSameLeg);
-             if(loop) {   
+             if(loop) {  
+                 
+            // IsPayneed & !isSameleg refers the loop is for new level upgrade
+                 if(isPayNeed && !isSameLeg && length==2) {
+                    _reglevel = payLevel;
+                }
                payment(_reglevel, payer, length, true); 
             } else {
             /* PROCEEDS PAYMENT */
@@ -226,34 +227,38 @@ contract SmartGenie {
            address _referrer = userList[users[_user].referrerID]; //7
            address _eligiblePayer;
             address _tempreferrer = _referrer; 
-           // find eligible payer 
-            for(int i=0; i<12; i++) { 
-                 uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
-                 _levelEligibility = users[_tempreferrer].levelEligibility[_lelevel]; 
-                 
-                 address payer1 = userList[users[_tempreferrer].referrerID]; //6
-                 address secReferrer = userList[users[payer1].referrerID]; //6
-                 
-                 if(_levelEligibility < 2) { 
-                    if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
-                        users[payer1].referrerID == 1 || users[payer1].referrerID == 2) { 
-                            
-                        if(!users[userList[users[payer1].referrerID]].isExist) { 
-                            _eligiblePayer = userList[1] ;
-                        } else {
-                        _eligiblePayer = userList[users[payer1].referrerID];
-                        }
-                        break;
-                    } 
-                    _tempreferrer = secReferrer; 
-                    _eligiblePayer = secReferrer; 
-                    
-                 } else {
-                     _eligiblePayer = _tempreferrer; 
-                     break;
-                 }
-            }
             
+            if(users[_user].referrerID == 1) {
+             _eligiblePayer = _referrer;
+            } else {
+               // find eligible payer 
+                for(int i=0; i<12; i++) { 
+                     uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
+                     _levelEligibility = users[_tempreferrer].levelEligibility[_lelevel]; 
+                     
+                     address payer1 = userList[users[_tempreferrer].referrerID]; //6
+                     address secReferrer = userList[users[payer1].referrerID]; //6
+                     
+                     if(_levelEligibility < 2) { 
+                        if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
+                            users[payer1].referrerID == 1 || users[payer1].referrerID == 2) { 
+                                
+                            if(!users[userList[users[payer1].referrerID]].isExist) { 
+                                _eligiblePayer = userList[1] ;
+                            } else {
+                            _eligiblePayer = userList[users[payer1].referrerID];
+                            }
+                            break;
+                        } 
+                        _tempreferrer = secReferrer; 
+                        _eligiblePayer = secReferrer; 
+                        
+                     } else {
+                         _eligiblePayer = _tempreferrer; 
+                         break;
+                     }
+                }
+            }
             users[_referrer].incomeCount[_regLevel] = users[_referrer].incomeCount[_regLevel]+1; 
             return (_eligiblePayer, _referrer);
     }
