@@ -8,6 +8,7 @@ contract SmartGenie {
     // 6. 0x17F6AD8Ef982297579C203069C1DbfFE4348c372
     // 7. 0x5c6B0f7Bf3E7ce046039Bd8FABdfD3f9F5021678
     // 8. 0x03C6FcED478cBbC9a4FAB34eF9f40767739D1Ff7
+    // 9. 0x1aE0EA34a72D944a8C7603FfB3eC30a6669E454C
     // 16.0x8bE8582bE8C77E06fBE63e7c54671A9444B347F6
     
     address public ownerWallet;
@@ -196,7 +197,10 @@ contract SmartGenie {
             uint256 upLevel = _regLevel+1;
             address payer; address referrer;
            // find eligible payer
-            (payer, referrer) = findEligiblePayer(_user, _regLevel, _levelEligibility);
+           if(upLevel <= 2) {
+             referrer = userList[users[_user].referrerID]; //7
+           } else {referrer = _user;}
+            (payer, referrer) = findEligiblePayer(referrer, _regLevel, _levelEligibility);
             
            
             if(!users[payer].isExist || levelUpgradePayments[upLevel][payer] == address(0)) {
@@ -223,14 +227,13 @@ contract SmartGenie {
          return (payer, isPayNeed, isSameLeg);
     }
     
-    function findEligiblePayer(address _user, uint256 _regLevel, uint256 _levelEligibility) internal returns (address, address){
-           address _referrer = userList[users[_user].referrerID]; //7
+    function findEligiblePayer(address _referrer, uint256 _regLevel, uint256 _levelEligibility) internal returns (address, address){
            address _eligiblePayer;
             address _tempreferrer = _referrer; 
-            
-            if(users[_user].referrerID == 1) {
-             _eligiblePayer = _referrer;
-            } else {
+                
+                if(users[_referrer].referrerID == 1) {
+                 _eligiblePayer = userList[users[_referrer].referrerID];
+                } else {
                // find eligible payer 
                 for(int i=0; i<12; i++) { 
                      uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
@@ -238,8 +241,8 @@ contract SmartGenie {
                      
                      address payer1 = userList[users[_tempreferrer].referrerID]; //6
                      address secReferrer = userList[users[payer1].referrerID]; //6
-                     
-                     if(_levelEligibility < 2) { 
+                     //LE initially 
+                     if(_levelEligibility < _regLevel+1) { 
                         if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
                             users[payer1].referrerID == 1 || users[payer1].referrerID == 2) { 
                                 
