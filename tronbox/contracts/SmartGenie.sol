@@ -35,6 +35,7 @@ contract SmartGenie {
     uint256 promAmt = 0;
     uint256 ursAmt = 0;
     uint256 regFee = 500 trx;
+    uint256 regShare = (regFee*10)/100;
     
     event regLevelEvent(address indexed _user, address indexed _referrer, uint _time);
     event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
@@ -47,7 +48,7 @@ contract SmartGenie {
         promotionWallet = _promotionWallet;
         
         // Setting the price for buying each level
-        LEVEL_PRICE[1] = 150 trx;
+        LEVEL_PRICE[1] = (regFee*30)/100;
         LEVEL_PRICE[2] = LEVEL_PRICE[1]*2;
         LEVEL_PRICE[3] = LEVEL_PRICE[2]*2;
         LEVEL_PRICE[4] = LEVEL_PRICE[3]*2;
@@ -120,7 +121,10 @@ contract SmartGenie {
             address referrer = userList[_referrerID]; //2
             users[referrer].incomeCount[1] = users[referrer].incomeCount[1]+1;
         }
-         
+        
+        // pay 10% of regfee to referrers for all new registrations
+        address(uint160(userList[_referrerID])).transfer(regShare);
+        
         // registration done. Emit event
         emit regLevelEvent(msg.sender, userList[_referrerID], now);
     }
