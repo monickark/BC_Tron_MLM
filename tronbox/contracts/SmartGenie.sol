@@ -30,6 +30,7 @@ contract SmartGenie {
     mapping(address => UserStruct) public users;
     mapping(uint => address) public userList;
     mapping(uint256 => mapping(address => address)) public levelUpgradePayments;
+    mapping(uint256 => mapping(address => bool)) public isLevelUpgradedForAddress;
     
     uint public currUserID = 0;
     uint256 promAmt = 0;
@@ -156,11 +157,15 @@ contract SmartGenie {
         if (isPayNeed || !users[payer].isExist || payer == userList[1]) {
             (loop, length) = checkLoopRequired(payer, payLevel, length, isRenewal, isSameLeg);
              if(loop) {  
-                 
             // IsPayneed & !isSameleg refers the loop is for new level upgrade
                  if(isPayNeed && !isSameLeg && length==2) {
                     _reglevel = payLevel;
                 }
+                // Renewal of level upgrade 4th payment
+                 if(isPayNeed && !isSameLeg && length == 4 && payLevel>1) {
+                    _reglevel = payLevel;
+                }
+               
                payment(_reglevel, payer, length, true); 
             } else {
             /* PROCEEDS PAYMENT */
@@ -207,7 +212,9 @@ contract SmartGenie {
             (payer, referrer) = findEligiblePayer(referrer, _regLevel, _levelEligibility);
             
            
-            if(!users[payer].isExist || levelUpgradePayments[upLevel][payer] == address(0)) {
+            if(!users[payer].isExist || 
+                (levelUpgradePayments[upLevel][payer] == address(0) && 
+                    isLevelUpgradedForAddress[upLevel][payer] ==  false)) {
                 if(!users[payer].isExist) payer = userList[1];
                 
                 //For payer as user1 anyways payment will proceed, so no need to update incomecount now
@@ -223,7 +230,9 @@ contract SmartGenie {
                 if (isLevelUpgradeFromSameLeg(payer, existingReferrer, referrer)) {
                     isSameLeg = true;
                 } else {
-                    levelUpgradePayments[upLevel][payer] = referrer;
+                    // remove level upgrame variable after level upgrade
+                    levelUpgradePayments[upLevel][payer] = address(0);
+                    isLevelUpgradedForAddress[upLevel][payer] = true;
                 }
             }
          
@@ -299,10 +308,9 @@ contract SmartGenie {
           tempPaymentCount % 4 == 0  &&
           users[_payer].referrerID!=0 && _regLevel == 1
         ) {
-           if(_length == 3 && tempPaymentCount ==4) {
+          if(_length == 3 && tempPaymentCount ==4) {
                 length = tempPaymentCount;
-           }
-           
+          } 
            loop = true;
         }
         
@@ -313,15 +321,27 @@ contract SmartGenie {
             tempPaymentCount % 4 == 0  &&
             _length == 2 && !isSameLeg &&
             _regLevel > 1) {
-            _regLevel = _regLevel+1;
-            loop = true;
+             // on levelupgrade 4th payment no loop required for contract owner as payer
+            if(_payer == userList[1]) {
+                loop = false;
+            } else {
+                length = 4;
+                loop = true;
+            }
         }
+        
+        
+        
         // payers second level upgrade received
          else if(tempPaymentCount == 2 &&
           users[_payer].referrerID!=0 && !isRenewal && !isSameLeg) {
            if(!users[_payer].isExist) _payer = userList[1];
-           length = tempPaymentCount;
-           loop = true;
+            if(_payer == userList[1]) {
+                loop = false;
+            } else {
+                loop = true;
+                length = tempPaymentCount;
+            }
         } 
         
         // First referrer for a user, no payments just amount got hold in contract increment income count for the referrer
