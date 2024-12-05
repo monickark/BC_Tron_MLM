@@ -20,7 +20,6 @@ contract SmartGenie {
         uint id;
         uint referrerID;
         address[] referral;
-        mapping(uint => uint) levelExpired;
         uint joined;
         mapping(uint => uint) incomeCount;
         uint[] levelEligibility;
@@ -29,6 +28,7 @@ contract SmartGenie {
     mapping(uint => uint) public LEVEL_PRICE;
     mapping(address => UserStruct) public users;
     mapping(uint => address) public userList;
+    mapping(uint256 => mapping(address => uint256)) public levelCounter;
     mapping(uint256 => mapping(address => address)) public levelUpgradePayments;
     mapping(uint256 => mapping(address => bool)) public isLevelUpgradedForAddress;
     
@@ -225,6 +225,9 @@ contract SmartGenie {
                 
                 // for all payers update levelupgrade payments
                 levelUpgradePayments[upLevel][payer] = referrer;
+                
+                // for all payers update levelupgrade payments
+                levelCounter[upLevel][payer] = 1;
             } else {
                 address existingReferrer = levelUpgradePayments[upLevel][payer];
                 if (isLevelUpgradeFromSameLeg(payer, existingReferrer, referrer)) {
@@ -233,6 +236,7 @@ contract SmartGenie {
                     // remove level upgrame variable after level upgrade
                     levelUpgradePayments[upLevel][payer] = address(0);
                     isLevelUpgradedForAddress[upLevel][payer] = true;
+                    levelCounter[upLevel][payer] = levelCounter[upLevel][payer] + 1;
                 }
             }
          
@@ -301,6 +305,11 @@ contract SmartGenie {
         // temp increment payer income count to check actual will inctrement during payment
         uint256 tempPaymentCount = users[_payer].incomeCount[_regLevel]+1;
         
+        // level upgrade of diff leg
+        if(levelCounter[_regLevel][_payer] == 2) {
+            loop = true;
+        }
+        
         /**
         Every fourth income counter of first leveel increment income counter and looping again to check referrers income counter
         */
@@ -329,8 +338,6 @@ contract SmartGenie {
                 loop = true;
             }
         }
-        
-        
         
         // payers second level upgrade received
          else if(tempPaymentCount == 2 &&
