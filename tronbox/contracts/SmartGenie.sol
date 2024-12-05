@@ -313,7 +313,7 @@ contract SmartGenie {
         /**
         Every fourth income counter of first leveel increment income counter and looping again to check referrers income counter
         */
-        if(tempPaymentCount >= 4 &&
+        else if(tempPaymentCount >= 4 &&
           tempPaymentCount % 4 == 0  &&
           users[_payer].referrerID!=0 && _regLevel == 1
         ) {
