@@ -11,9 +11,9 @@ contract SmartGenie {
     // 9. 0x1aE0EA34a72D944a8C7603FfB3eC30a6669E454C
     // 16.0x8bE8582bE8C77E06fBE63e7c54671A9444B347F6
     
-    address public ownerWallet;
+    address public adminWallet;
     address public ursWallet;
-    address public promotionWallet;
+    address public splPromoWallet;
  
     struct UserStruct {
         bool isExist;
@@ -24,6 +24,8 @@ contract SmartGenie {
         mapping(uint => uint) incomeCount;
         uint[] levelEligibility;
     }
+    address[4] public promotionWallets;
+    uint8[4] public promotionPercantage = [2,1,1,1];
     
     mapping(uint => uint) public LEVEL_PRICE;
     mapping(address => UserStruct) public users;
@@ -33,20 +35,30 @@ contract SmartGenie {
     mapping(uint256 => mapping(address => bool)) public isLevelUpgradedForAddress;
     
     uint public currUserID = 0;
+    uint256 splPromAmt = 0;
     uint256 promAmt = 0;
     uint256 ursAmt = 0;
     uint256 regFee = 500 trx;
-    uint256 regShare = (regFee*10)/100;
+    uint256 regShare = (regFee*10)/100; // 10% of reg fee
+    uint256 promotionShare = (regFee*5)/100; // 5% 0f reg fee
+    uint256 splPromoShare = (regFee*8)/100; // 8% 0f reg fee
     
     event regLevelEvent(address indexed _user, address indexed _referrer, uint _time);
     event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
     event lostMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
     
-    constructor(address _ursWallet, address _promotionWallet) public {
+    modifier onlyAdmin {
+        require(msg.sender == adminWallet, "Caller is not Admin.");
+        _;
+    }
+    
+    constructor(address _ursWallet, address _prWallet1, address _prWallet2, 
+                address _prWallet3, address _prWallet4, address _sprWallet) public {
         // Contract deployer will be the owner wallet 
-        ownerWallet = msg.sender;
+        adminWallet = msg.sender;
         ursWallet = _ursWallet;
-        promotionWallet = _promotionWallet;
+        splPromoWallet = _sprWallet;
+        promotionWallets = [_prWallet1, _prWallet2, _prWallet3, _prWallet4];
         
         // Setting the price for buying each level
         LEVEL_PRICE[1] = (regFee*30)/100;
@@ -74,8 +86,8 @@ contract SmartGenie {
             joined:now,
             levelEligibility: new uint[](0)
         });
-        users[ownerWallet] = userStruct;
-        userList[currUserID] = ownerWallet;
+        users[adminWallet] = userStruct;
+        userList[currUserID] = adminWallet;
     }
     
     // User Registraion must provide Refferrer Id
@@ -110,7 +122,8 @@ contract SmartGenie {
         
         // update split wallet balances
         ursAmt += LEVEL_PRICE[1];
-        promAmt += LEVEL_PRICE[1];
+        promAmt += promotionShare;
+        splPromAmt += splPromoShare;
         
         //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
@@ -201,6 +214,7 @@ contract SmartGenie {
                 - Proceed payment
                 - increment incomecounter for referrer (Payer level upgrade incomecouter will update during payment)
     */
+    
     function levelUpgrade(uint256 _regLevel, address _user, uint256 _levelEligibility, bool isSameLeg, bool isPayNeed ) 
              internal returns (address, bool, bool) {
             uint256 upLevel = _regLevel+1;
@@ -401,23 +415,59 @@ contract SmartGenie {
     }
     
     
-    // // Transfer Promotion Value
-    // function transferPromotion(uint256 _amount) public returns (bool) {
-    //     require(msg.sender == promotionWallet, "Invalid caller");
-    //     require(_amount <= promAmt, "Invalid Amount");
-    //      bool sent = false;
-    //       sent = address(uint160(promotionWallet)).send(_amount);
-    //       return sent;
-    // }
+    // Transfer Promotion Value
+    function withdrawPromotion(uint256 _amount) public returns (bool) {
+        bool checkCaller = false;
+        uint callerIndex = 0;
+        for (uint i = 0; i < promotionWallets.length; i++) {
+            if (promotionWallets[i] == msg.sender) {
+                checkCaller = true;
+                callerIndex = i;
+                break;
+            }
+        }
+
+        require(checkCaller == true, "Invalid caller");
+        uint maxEligibleAmount = (promAmt * promotionPercantage[callerIndex])/100;
+        require(_amount <= maxEligibleAmount, "Invalid Amount");
+         bool sent = false;
+          sent = address(uint160(msg.sender)).send(_amount);
+          return sent;
+    }
+    
+    // Withdraw Special Promotion Value
+    function withdrawSplPromotion(uint256 _amount) public returns (bool) {
+        require(msg.sender == splPromoWallet, "Invalid caller");
+        require(_amount <= splPromAmt, "Invalid Amount");
+        bool sent = false;
+        sent = address(uint160(splPromoWallet)).send(_amount);
+        return sent;
+    }
      
-    //   // Transfer URS Value
-    // function transferURS(uint256 _amount) public returns (bool) {
-    //     require(msg.sender == ursWallet, "Invalid caller");
-    //     require(_amount <= ursAmt, "Invalid Amount");
-    //      bool sent = false;
-    //       sent = address(uint160(ursWallet)).send(_amount);
-    //       return sent;
-    // }
+    // Withdraw URS Value
+    function transferURS(uint256 _amount) public returns (bool) {
+        require(msg.sender == ursWallet, "Invalid caller");
+        require(_amount <= ursAmt, "Invalid Amount");
+        bool sent = false;
+        sent = address(uint160(ursWallet)).send(_amount);
+        return sent;
+    }
+
+    function updatePromotionWallet(address walletAddr, uint index) onlyAdmin public {
+        require(msg.sender == adminWallet, "Invalid caller");
+        require(index <= promotionWallets.length, "Invalid Index");
+        promotionWallets[index-1] = walletAddr;
+    }
+    
+    function updateSplPromotionWallet(address walletAddr) onlyAdmin public {
+        require(msg.sender == adminWallet, "Invalid caller");
+        splPromoWallet = walletAddr;
+    }
+    
+    function updateURSWallet(address walletAddr) onlyAdmin public {
+        require(msg.sender == adminWallet, "Invalid caller");
+        splPromoWallet = walletAddr;
+    }
     
     // Get smartcontract balance
     function getContractBalance() public view returns(uint256) {
