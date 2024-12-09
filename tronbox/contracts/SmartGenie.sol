@@ -14,6 +14,7 @@ contract SmartGenie {
     address public adminWallet;
     address public ursWallet;
     address public splPromoWallet;
+    address public rewardWallet;
  
     struct UserStruct {
         bool isExist;
@@ -53,11 +54,13 @@ contract SmartGenie {
     }
     
     constructor(address _ursWallet, address _prWallet1, address _prWallet2, 
-                address _prWallet3, address _prWallet4, address _sprWallet) public {
+                address _prWallet3, address _prWallet4, address _sprWallet,
+                address _rewardWallet) public {
         // Contract deployer will be the owner wallet 
         adminWallet = msg.sender;
         ursWallet = _ursWallet;
         splPromoWallet = _sprWallet;
+        rewardWallet = _rewardWallet;
         promotionWallets = [_prWallet1, _prWallet2, _prWallet3, _prWallet4];
         
         // Setting the price for buying each level
@@ -156,6 +159,10 @@ contract SmartGenie {
         if (length == 2) {
           (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
           payLevel = _reglevel+1;
+        } 
+         // level renewal
+        else if (length >= 20 && length % 20 == 0) { 
+           payer = rewardWallet;
         } 
         // level renewal
         else if (length >= 4 && length % 4 == 0) { 
@@ -488,6 +495,4 @@ contract SmartGenie {
     function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
         return users[_user].incomeCount[_level];
     }
-
-    
 }
