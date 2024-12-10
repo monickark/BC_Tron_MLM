@@ -53,9 +53,9 @@ contract SmartGenie {
         _;
     }
     
-    constructor(address _ursWallet, address _prWallet1, address _prWallet2, 
+    constructor(address _prWallet1, address _prWallet2, 
                 address _prWallet3, address _prWallet4, address _sprWallet,
-                address _rewardWallet) public {
+                address _rewardWallet, address _ursWallet) public {
         // Contract deployer will be the owner wallet 
         adminWallet = msg.sender;
         ursWallet = _ursWallet;
@@ -459,21 +459,18 @@ contract SmartGenie {
         sent = address(uint160(ursWallet)).send(_amount);
         return sent;
     }
-
+    
+    // index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
     function updatePromotionWallet(address walletAddr, uint index) onlyAdmin public {
         require(msg.sender == adminWallet, "Invalid caller");
-        require(index <= promotionWallets.length, "Invalid Index");
-        promotionWallets[index-1] = walletAddr;
-    }
-    
-    function updateSplPromotionWallet(address walletAddr) onlyAdmin public {
-        require(msg.sender == adminWallet, "Invalid caller");
-        splPromoWallet = walletAddr;
-    }
-    
-    function updateURSWallet(address walletAddr) onlyAdmin public {
-        require(msg.sender == adminWallet, "Invalid caller");
-        splPromoWallet = walletAddr;
+        require(index <= 5, "Invalid Index");
+        if(index <=3 ) {
+            promotionWallets[index-1] = walletAddr;
+        } else if (index == 4) {
+            splPromoWallet = walletAddr;
+        } else {
+            ursWallet = walletAddr; // for index 5
+        }
     }
     
     // Get smartcontract balance
