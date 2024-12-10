@@ -423,7 +423,7 @@ contract SmartGenie {
     
     
     // Transfer Promotion Value
-    function withdrawPromotion(uint256 _amount) public returns (bool) {
+    function withdrawPromotion() public returns (bool) {
         bool checkCaller = false;
         uint callerIndex = 0;
         for (uint i = 0; i < promotionWallets.length; i++) {
@@ -436,27 +436,24 @@ contract SmartGenie {
 
         require(checkCaller == true, "Invalid caller");
         uint maxEligibleAmount = (promAmt * promotionPercantage[callerIndex])/100;
-        require(_amount <= maxEligibleAmount, "Invalid Amount");
          bool sent = false;
-          sent = address(uint160(msg.sender)).send(_amount);
+          sent = address(uint160(msg.sender)).send(maxEligibleAmount);
           return sent;
     }
     
     // Withdraw Special Promotion Value
-    function withdrawSplPromotion(uint256 _amount) public returns (bool) {
+    function withdrawSplPromotion() public returns (bool) {
         require(msg.sender == splPromoWallet, "Invalid caller");
-        require(_amount <= splPromAmt, "Invalid Amount");
         bool sent = false;
-        sent = address(uint160(splPromoWallet)).send(_amount);
+        sent = address(uint160(splPromoWallet)).send(splPromAmt);
         return sent;
     }
      
     // Withdraw URS Value
-    function transferURS(uint256 _amount) public returns (bool) {
+    function transferURS() public returns (bool) {
         require(msg.sender == ursWallet, "Invalid caller");
-        require(_amount <= ursAmt, "Invalid Amount");
         bool sent = false;
-        sent = address(uint160(ursWallet)).send(_amount);
+        sent = address(uint160(ursWallet)).send(ursAmt);
         return sent;
     }
     
