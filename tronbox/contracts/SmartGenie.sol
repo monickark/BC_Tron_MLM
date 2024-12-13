@@ -279,6 +279,15 @@ contract SmartGenie {
                      
                      address payer1 = userList[users[_tempreferrer].referrerID]; //6
                      address secReferrer = userList[users[payer1].referrerID]; //6
+                     
+                     if(_regLevel == 2) {
+                         secReferrer = userList[users[secReferrer].referrerID]; 
+                     }
+                     
+                     if(_regLevel == 3) {
+                         address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                         secReferrer = userList[users[secReferrer1].referrerID]; 
+                     }
                      //LE initially 
                      if(_levelEligibility < _regLevel+1) { 
                         if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
@@ -489,4 +498,6 @@ contract SmartGenie {
     function getUserIncomeCount(address _user, uint256 _level) public view returns(uint256) {
         return users[_user].incomeCount[_level];
     }
+
+    
 }
