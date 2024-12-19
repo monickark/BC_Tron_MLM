@@ -26,7 +26,8 @@ contract SmartGenie {
         uint[] levelEligibility;
     }
     address[4] public promotionWallets;
-    uint8[4] public promotionPercantage = [2,1,1,1];
+    uint8[4] public promotionPercantage = [40,20,20,20];
+    uint256[4]  promotionWalletsAmount;
     
     mapping(uint => uint) public LEVEL_PRICE;
     mapping(address => UserStruct) public users;
@@ -55,12 +56,11 @@ contract SmartGenie {
     
     constructor(address _prWallet1, address _prWallet2, 
                 address _prWallet3, address _prWallet4, address _sprWallet,
-                address _rewardWallet, address _ursWallet) public {
+                address _ursWallet) public {
         // Contract deployer will be the owner wallet 
         adminWallet = msg.sender;
         ursWallet = _ursWallet;
         splPromoWallet = _sprWallet;
-        rewardWallet = _rewardWallet;
         promotionWallets = [_prWallet1, _prWallet2, _prWallet3, _prWallet4];
         
         // Setting the price for buying each level
@@ -127,6 +127,12 @@ contract SmartGenie {
         ursAmt += LEVEL_PRICE[1];
         promAmt += promotionShare;
         splPromAmt += splPromoShare;
+        
+        // update promotion wallet amount of individuals
+        promotionWalletsAmount[0] = (promAmt * promotionPercantage[0])/100;
+        promotionWalletsAmount[1] = (promAmt * promotionPercantage[1])/100;
+        promotionWalletsAmount[2] = (promAmt * promotionPercantage[2])/100;
+        promotionWalletsAmount[3] = (promAmt * promotionPercantage[3])/100;
         
         //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
@@ -429,42 +435,7 @@ contract SmartGenie {
         if(firstLeg == secondLeg) {isSameLeg = true;}
          return  isSameLeg;      
     }
-    
-    
-    // Transfer Promotion Value
-    function withdrawPromotion() public returns (bool) {
-        bool checkCaller = false;
-        uint callerIndex = 0;
-        for (uint i = 0; i < promotionWallets.length; i++) {
-            if (promotionWallets[i] == msg.sender) {
-                checkCaller = true;
-                callerIndex = i;
-                break;
-            }
-        }
-
-        require(checkCaller == true, "Invalid caller");
-        uint maxEligibleAmount = (promAmt * promotionPercantage[callerIndex])/100;
-         bool sent = false;
-          sent = address(uint160(msg.sender)).send(maxEligibleAmount);
-          return sent;
-    }
-    
-    // Withdraw Special Promotion Value
-    function withdrawSplPromotion() public returns (bool) {
-        require(msg.sender == splPromoWallet, "Invalid caller");
-        bool sent = false;
-        sent = address(uint160(splPromoWallet)).send(splPromAmt);
-        return sent;
-    }
-     
-    // Withdraw URS Value
-    function transferURS() public returns (bool) {
-        require(msg.sender == ursWallet, "Invalid caller");
-        bool sent = false;
-        sent = address(uint160(ursWallet)).send(ursAmt);
-        return sent;
-    }
+ 
     
     // index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
     function updatePromotionWallet(address walletAddr, uint index) onlyAdmin public {
@@ -477,6 +448,65 @@ contract SmartGenie {
         } else {
             ursWallet = walletAddr; // for index 5
         }
+    }
+    
+    // Withdraw Promotion Value index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
+    function withdrawPromotion() public returns (bool) {
+        bool checkCaller = false;
+        uint amount;
+        if(msg.sender == splPromoWallet) {
+            amount = splPromAmt;
+            splPromAmt = 0;
+            checkCaller = true;
+        } else if(msg.sender == ursWallet) {
+            amount = ursAmt;
+            ursAmt = 0;
+            checkCaller = true;
+        }  else {
+            uint callerIndex = 0;
+            for (uint i = 0; i < promotionWallets.length; i++) {
+                if (promotionWallets[i] == msg.sender) {
+                    checkCaller = true;
+                    callerIndex = i;
+                    break;
+                }
+            } 
+            
+            amount = promotionWalletsAmount[callerIndex];
+            promotionWalletsAmount[callerIndex] -= amount;
+            promAmt = promAmt - amount;
+        }
+        require(checkCaller == true, "Invalid caller");
+        bool sent = false;
+        sent = address(uint160(msg.sender)).send(amount);
+        return sent;
+    }
+    
+    
+     // Withdraw Promotion Value index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
+    function checkWithdrawAmount() public view returns (uint) {
+        bool checkCaller = false;
+        uint amount;
+        if(msg.sender == splPromoWallet) {
+            amount = splPromAmt;
+            checkCaller = true;
+        } else if(msg.sender == ursWallet) {
+            amount = ursAmt;
+            checkCaller = true;
+        }  else {
+            uint callerIndex = 0;
+            for (uint i = 0; i < promotionWallets.length; i++) {
+                if (promotionWallets[i] == msg.sender) {
+                    checkCaller = true;
+                    callerIndex = i;
+                    break;
+                }
+            } 
+            amount = promotionWalletsAmount[callerIndex];
+        }
+        
+        require(checkCaller == true, "Invalid caller");
+        return amount/1000000;
     }
     
     // Get smartcontract balance
