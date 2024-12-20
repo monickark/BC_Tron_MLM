@@ -1,6 +1,15 @@
 pragma solidity 0.5.12;
 
 contract SmartGenie {
+    
+    // TWAY8fGTBHfWwsXLwnSsd5oh5ZrRqWusne
+    // TJ1WCZPs1PJP2q368UKEdsWiYdz9GT43vj
+    // TGowyTywdUG97ynWMrX2QYa5hJGxhooian
+    // TBqKMWLLryq6tu23owfQgTFaVs91H3maj4
+    // TUQPrDEJkV4ttkrL7cVv1p3mikWYfM7LWt
+    // TAtHD5aZtCupG35MxSmgkV64C4WV2f12DT
+    // TCRL1QU9ybjW8CE2sPjCMpkAJBj5Xf7iVh
+    
     // 1. 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
     // 2. 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
     // 3. 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
@@ -55,12 +64,13 @@ contract SmartGenie {
     }
     
     constructor(address _prWallet1, address _prWallet2, 
-                address _prWallet3, address _prWallet4, address _sprWallet,
+                address _prWallet3, address _prWallet4, address _rewardWallet, address _sprWallet,
                 address _ursWallet) public {
         // Contract deployer will be the owner wallet 
         adminWallet = msg.sender;
         ursWallet = _ursWallet;
         splPromoWallet = _sprWallet;
+        rewardWallet = _rewardWallet;
         promotionWallets = [_prWallet1, _prWallet2, _prWallet3, _prWallet4];
         
         // Setting the price for buying each level
@@ -459,8 +469,8 @@ contract SmartGenie {
             splPromAmt = 0;
             checkCaller = true;
         } else if(msg.sender == ursWallet) {
-            amount = ursAmt;
-            ursAmt = 0;
+            amount = (ursAmt*20)/100;
+            ursAmt -= amount;
             checkCaller = true;
         }  else {
             uint callerIndex = 0;

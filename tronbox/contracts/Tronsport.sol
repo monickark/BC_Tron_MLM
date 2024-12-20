@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0
-
 pragma solidity 0.5.12;
 
 contract Tronsport {
@@ -16,10 +14,12 @@ contract Tronsport {
         address[] indirectReferral;
         mapping(address => uint256) indirectReferralMap;
         mapping(address => uint256) referralMap;
+      //  mapping(uint256 => uint256) levelExpired;
         uint256 directReferralCount;
         uint256 indirectReferralCount;
-        uint256 indirectReferralLength; 
-        uint256 joined;
+        uint256 indirectReferralLength;
+     //   uint256 joined;
+        uint256 level2PurchaseDate;
     }
 
     struct paymentStruct {
@@ -32,7 +32,8 @@ contract Tronsport {
         uint256 loss;
     }
 
-
+   // uint256 REFERRER_EACH_LEVEL_LIMIT = 20;
+   // uint256 PERIOD_LENGTH = 122 days;
     uint256 INCOME_LIMIT = 20;
     uint256 SECOND_INCOME_LIMIT = 100;
 
@@ -55,9 +56,9 @@ contract Tronsport {
     constructor() public {
         ownerWallet = msg.sender;
 
-        LEVEL_PRICE[1] = 200 trx; //(regFee*30)/100
-        LEVEL_PRICE[2] = 1000 trx; //LEVEL_PRICE[1]*5
-        LEVEL_PRICE[3] = 5000 trx; //LEVEL_PRICE[2]*5
+        LEVEL_PRICE[1] = 200 trx;
+        LEVEL_PRICE[2] = 1000 trx;
+        LEVEL_PRICE[3] = 5000 trx;
 
         UserStruct memory userStruct;
         currUserID++;
@@ -72,12 +73,16 @@ contract Tronsport {
             indirectReferralCount: 0,
             indirectReferralLength: 0,
             directReferralCount: 0,
-            joined: now
+          //  joined: now,
+            level2PurchaseDate: 0
         });
 
         users[ownerWallet] = userStruct;
         userList[currUserID] = ownerWallet;
 
+        // for (uint256 i = 1; i <= 3; i++) {
+        //     users[ownerWallet].levelExpired[i] = 55555555555;
+        // }
     }
 
     function() external payable {
@@ -101,7 +106,7 @@ contract Tronsport {
     }
 
 	
-    function regUser(uint256 _referrerID) public payable {
+   function regUser(uint256 _referrerID) public payable {
       //  require(address(oldSC) == address(0), "Initialize not finished");
         require(!users[msg.sender].isExist, "User exist");
         require(
@@ -110,17 +115,27 @@ contract Tronsport {
         );
         require(msg.value == LEVEL_PRICE[1], "Incorrect Value");
 
-        
+        // if (
+        //     users[userList[_referrerID]].referral.length >=
+        //     REFERRER_EACH_LEVEL_LIMIT
+        // ) 
+        _referrerID = users[findFreeReferrer(userList[_referrerID])].id;
+
         uint256 activeReferrerId = findActiveReferrer(_referrerID, false, 1);
         uint256 referalCount = users[userList[_referrerID]]
             .directReferralCount +
             users[userList[_referrerID]].indirectReferralCount;
 
         bool storeLostProfit = true;
-        if (endsWith3or6or9(referalCount + 1) == true) {
+        if (
+            activeReferrerId == _referrerID ||
+            (isUserActive(userList[_referrerID]) &&
+                endsWith2or4(referalCount + 1) == true)
+        ) {
             storeLostProfit = false;
             users[userList[_referrerID]].directReferralCount += 1;
         } else if (
+            isUserActive(userList[_referrerID]) &&
             ((payments[userList[_referrerID]].length >= INCOME_LIMIT &&
                 users[userList[_referrerID]].directReferralCount < 3) ||
                 (payments[userList[_referrerID]].length >=
@@ -142,7 +157,8 @@ contract Tronsport {
             directReferralCount: 0,
             indirectReferralCount: 0,
             indirectReferralLength: 0,
-            joined: now
+          //  joined: now,
+            level2PurchaseDate: 0
         });
         userList[currUserID] = msg.sender;
 
@@ -198,7 +214,16 @@ contract Tronsport {
             true,
             _level
         );
-        {
+
+        if (_level == 1) {
+
+            require(msg.value == LEVEL_PRICE[1], "Incorrect Value");
+            // if (users[msg.sender].levelExpired[1] >= now) {
+            //     users[msg.sender].levelExpired[1] += PERIOD_LENGTH;
+            // } else {
+            //     users[msg.sender].levelExpired[1] = now + PERIOD_LENGTH;
+            // }
+        } else {
 
 
             require(msg.value == LEVEL_PRICE[_level], "Incorrect Value");
@@ -206,15 +231,53 @@ contract Tronsport {
 
             if (_level == 2) {
 
-                require(
-                     ((now - users[msg.sender].joined)) >
-                       61 days &&
-                        users[msg.sender].directReferralCount >=
-                        5,
-                    "Upgrade can be done only after 61 days of purchase of level 1 and minimum direct referal should be 5"
-                );
-            } 
+                // require(
+                //     ((now - users[msg.sender].joined)) >
+                //       61 days &&
+                //         users[msg.sender].directReferralCount >=
+                //         5,
+                //     "Upgrade can be done only after 61 days of purchase of level 1 and minimum direct referal should be 5"
+                // );
+            } else if (_level == 3) {
 
+              //  if (users[msg.sender].levelExpired[_level] == 0) {
+                    require(
+                        ((now -
+                            users[msg.sender]
+                                .level2PurchaseDate)) >
+                            61 days &&
+                            users[msg.sender]
+                                .directReferralCount >=
+                            10,
+                        "Upgrade can be done only after 61 days of purchase of level 2 and minimum direct referal should be 10"
+                    );
+              //  }
+            }
+
+
+            // for (uint256 l = _level - 1; l > 0; l--) {
+            //     require(
+            //         users[msg.sender].levelExpired[l] >= now,
+            //         "Buy the previous level"
+            //     );
+            // }
+
+
+           // if (users[msg.sender].levelExpired[_level] == 0) {
+                if (_level == 2) {
+                    users[msg.sender].level2PurchaseDate = now;
+                }
+
+     //           users[msg.sender].levelExpired[_level] = now + PERIOD_LENGTH;
+            // } else {
+            //     if (users[msg.sender].levelExpired[_level] >= now) {
+            //         users[msg.sender].levelExpired[_level] += PERIOD_LENGTH;
+            //     } else {
+            //         users[msg.sender].levelExpired[_level] =
+            //             now +
+            //             PERIOD_LENGTH;
+            //     }
+            // }
         }
 
 
@@ -309,7 +372,9 @@ contract Tronsport {
 
 
     function findFreeReferrer(address _user) public view returns (address) {
-      
+        if (users[_user].referral.length <2)  {
+            return _user;
+        }
 
         address[] memory referrals = new address[](126);
         referrals[0] = users[_user].referral[0];
@@ -319,15 +384,23 @@ contract Tronsport {
         bool noFreeReferrer = true;
 
         for (uint256 i = 0; i < 126; i++) {
-            {
+            // if (
+            //   // users[referrals[i]].referral.length == REFERRER_EACH_LEVEL_LIMIT
+            // ) 
+            
                 if (i < 62) {
                     referrals[(i + 1) * 2] = users[referrals[i]].referral[0];
                     referrals[(i + 1) * 2 + 1] = users[referrals[i]].referral[
                         1
                     ];
                 }
-            } 
-        }
+        
+         else {
+                noFreeReferrer = false;
+                freeReferrer = referrals[i];
+                break;
+          }
+       }
 
         require(!noFreeReferrer, "No Free Referrer");
 
@@ -356,7 +429,8 @@ contract Tronsport {
         uint256 tempreferrerId = referrerId;
         bool checkSpon_Spons = false;
 
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < 40; i++) {
+            if (isUserActive(userList[tempreferrerId])) {
                 if (
                     (payments[userList[tempreferrerId]].length >=
                         INCOME_LIMIT &&
@@ -376,7 +450,7 @@ contract Tronsport {
                 } else if (
                     upgrading == false &&
                     tempreferrerId != 1 &&
-                    endsWith3or6or9(
+                    endsWith2or4(
                         users[userList[tempreferrerId]].indirectReferralCount +
                             users[userList[tempreferrerId]]
                                 .directReferralCount +
@@ -398,11 +472,34 @@ contract Tronsport {
                     activeSponsor = tempreferrerId;
                     break;
                 }
+            } else {
+                tempreferrerId = users[userList[tempreferrerId]].referrerID;
+            }
         }
 
         return activeSponsor;
     }
 
+
+    function isUserActive(address _user)
+        public
+        view
+        returns (bool)
+    {
+        if (!users[_user].isExist) {
+            return false;
+        }
+
+        // if (users[_user].levelExpired[_level] == 0) {
+        //     return false;
+        // }
+
+        // if (users[_user].levelExpired[_level] < now) {
+        //     return false;
+        // }
+
+        return true;
+    }
 
 
     function viewUserReferral(address _user)
@@ -423,6 +520,14 @@ contract Tronsport {
     }
 
 
+    // function viewUserLevelExpired(address _user, uint256 _level)
+    //     public
+    //     view
+    //     returns (uint256)
+    // {
+    //     return users[_user].levelExpired[_level];
+    // }
+
 
     function getUserCurrentLevel(address _user) public view returns (uint256) {
         uint256 level = 0;
@@ -431,9 +536,52 @@ contract Tronsport {
             return level;
         }
 
+        // for (uint256 l = 3; l > 0; l--) {
+        //     // if (
+        //     //     users[_user].levelExpired[l] != 0 &&
+        //     //     users[_user].levelExpired[l] >= now
+        //     // ) 
+        //     {
+        //         level = l;
+        //         break;
+        //     }
+        // }
+
         return level;
     }
 
+
+    // function getUserLevelsData(address _user)
+    //     public
+    //     view
+    //     returns (
+    //         uint256,
+    //         uint256,
+    //         uint256,
+    //         bool,
+    //         bool,
+    //         bool
+    //     )
+    // {
+    //     uint256 level1 = users[_user].levelExpired[1];
+    //     uint256 level2 = users[_user].levelExpired[2];
+    //     uint256 level3 = users[_user].levelExpired[3];
+    //     uint256 joinedTime = users[_user].joined;
+    //     uint256 level2purchaseTime = users[_user].level2PurchaseDate;
+    //     uint256 directCount = users[_user].directReferralCount;
+
+    //     bool canActivate2 = (now - joinedTime) > 61 days &&
+    //         directCount >= 5 &&
+    //         now < level1;
+    //     bool canActivate3 = (now - level2purchaseTime) >
+    //         61 days &&
+    //         directCount >= 10 &&
+    //         now < level1 &&
+    //         now < level2;
+    //     bool canExtend3 = now < level1 && now < level2;
+
+    //     return (level1, level2, level3, canActivate2, canActivate3, canExtend3);
+    // }
 
     function lostProfitSize(address _user) public view returns (uint256) {
         return lostProfit[_user].length;
@@ -453,8 +601,8 @@ contract Tronsport {
         }
     }
 
-    function endsWith3or6or9(uint256 num) internal pure returns (bool) {
+    function endsWith2or4(uint256 num) internal pure returns (bool) {
         uint256 lastDigit = num % 10; // Get the last digit of the number
-        return lastDigit == 3 || lastDigit == 6 || lastDigit == 9; // Check if the last digit is 2 or 4
+        return lastDigit == 2 || lastDigit == 4; // Check if the last digit is 2 or 4
     }
 }
