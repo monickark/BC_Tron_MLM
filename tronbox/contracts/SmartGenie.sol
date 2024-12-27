@@ -309,7 +309,7 @@ contract SmartGenie {
                         if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
                             users[payer1].referrerID == 1 || users[payer1].referrerID == 2) { 
                                 
-                            if(!users[userList[users[payer1].referrerID]].isExist) { 
+                            if(!users[userList[users[payer1].referrerID]].isExist || users[secReferrer].referrerID == 0) { 
                                 _eligiblePayer = userList[1] ;
                             } else {
                             _eligiblePayer = userList[users[payer1].referrerID];
