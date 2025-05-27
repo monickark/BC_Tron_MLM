@@ -1,15 +1,12 @@
-pragma solidity 0.5.12;
+// SPDX-License-Identifier: Unlicensed
+
+pragma solidity ^0.8.12;
+
+/** 
+* @custom:dev-run-script ./test/TestSG.js
+*/
 
 contract SmartGenie {
-    
-    // TWAY8fGTBHfWwsXLwnSsd5oh5ZrRqWusne
-    // TJ1WCZPs1PJP2q368UKEdsWiYdz9GT43vj
-    // TGowyTywdUG97ynWMrX2QYa5hJGxhooian
-    // TBqKMWLLryq6tu23owfQgTFaVs91H3maj4
-    // TUQPrDEJkV4ttkrL7cVv1p3mikWYfM7LWt
-    // TAtHD5aZtCupG35MxSmgkV64C4WV2f12DT
-    // TCRL1QU9ybjW8CE2sPjCMpkAJBj5Xf7iVh
-    
     // 1. 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
     // 2. 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
     // 3. 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
@@ -35,8 +32,7 @@ contract SmartGenie {
         uint[] levelEligibility;
     }
     address[4] public promotionWallets;
-    uint8[4] public promotionPercantage = [40,20,20,20];
-    uint256[4]  promotionWalletsAmount;
+    uint8[4] public promotionPercantage = [2,1,1,1];
     
     mapping(uint => uint) public LEVEL_PRICE;
     mapping(address => UserStruct) public users;
@@ -49,7 +45,7 @@ contract SmartGenie {
     uint256 splPromAmt = 0;
     uint256 promAmt = 0;
     uint256 ursAmt = 0;
-    uint256 regFee = 500 trx;
+    uint256 regFee = 50 ether;
     uint256 regShare = (regFee*10)/100; // 10% of reg fee
     uint256 promotionShare = (regFee*5)/100; // 5% 0f reg fee
     uint256 splPromoShare = (regFee*8)/100; // 8% 0f reg fee
@@ -64,8 +60,8 @@ contract SmartGenie {
     }
     
     constructor(address _prWallet1, address _prWallet2, 
-                address _prWallet3, address _prWallet4, address _rewardWallet, address _sprWallet,
-                address _ursWallet) public {
+                address _prWallet3, address _prWallet4, address _sprWallet,
+                address _rewardWallet, address _ursWallet) {
         // Contract deployer will be the owner wallet 
         adminWallet = msg.sender;
         ursWallet = _ursWallet;
@@ -88,23 +84,20 @@ contract SmartGenie {
         LEVEL_PRICE[12] = LEVEL_PRICE[11]*2;
 
         // Create contract deployer as first user
-        UserStruct memory userStruct;
-        currUserID++;
+        UserStruct storage userStruct = users[adminWallet];
+        userStruct.isExist = true;
+        userStruct.id = currUserID;
+        userStruct.referrerID = 0;
+        userStruct.referral = new address[](0);
+        userStruct.joined = block.timestamp;
+        userStruct.levelEligibility = new uint[](0); 
 
-        userStruct = UserStruct({
-            isExist: true,
-            id: currUserID,
-            referrerID: 0,
-            referral: new address[](0),
-            joined:now,
-            levelEligibility: new uint[](0)
-        });
-        users[adminWallet] = userStruct;
+        currUserID++;
         userList[currUserID] = adminWallet;
     }
     
     // User Registraion must provide Refferrer Id
-    function regUser(uint _referrerID) public payable {
+    function regUser(uint _referrerID) public payable returns (bool) {
         // Caller should not registered already, so his existence in 'users'
         require(!users[msg.sender].isExist, 'User exist');
         // Referrer is should not be empty or caller's own id
@@ -112,20 +105,15 @@ contract SmartGenie {
         // Caller must provide first level 'LEVEL_PRICE' for registration
         require(msg.value == regFee, 'Incorrect Value');
 
-        // Conditions verified. Now Registering user
-        UserStruct memory userStruct;
+        // Conditions verified. block.timestamp Registering user
+        UserStruct storage userStruct = users[msg.sender];
+        userStruct.isExist = true;
+        userStruct.id = currUserID;
+        userStruct.referrerID = _referrerID;
+        userStruct.referral = new address[](0);
+        userStruct.joined = block.timestamp;
+        userStruct.levelEligibility = new uint[](0); 
         currUserID++;
-        
-        // Cretaing user object
-        userStruct = UserStruct({
-            isExist: true,
-            id: currUserID,
-            referrerID: _referrerID,
-            referral: new address[](0),
-            joined:now,
-            levelEligibility: new uint[](0)
-        });
-        users[msg.sender] = userStruct;
         
         // Add new user to existing userlist
         userList[currUserID] = msg.sender;
@@ -137,12 +125,6 @@ contract SmartGenie {
         ursAmt += LEVEL_PRICE[1];
         promAmt += promotionShare;
         splPromAmt += splPromoShare;
-        
-        // update promotion wallet amount of individuals
-        promotionWalletsAmount[0] = (promAmt * promotionPercantage[0])/100;
-        promotionWalletsAmount[1] = (promAmt * promotionPercantage[1])/100;
-        promotionWalletsAmount[2] = (promAmt * promotionPercantage[2])/100;
-        promotionWalletsAmount[3] = (promAmt * promotionPercantage[3])/100;
         
         //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
@@ -156,10 +138,13 @@ contract SmartGenie {
         }
         
         // pay 10% of regfee to referrers for all new registrations
-        address(uint160(userList[_referrerID])).transfer(regShare);
-        
+        // address(uint160(userList[_referrerID])).transfer(regShare); remove this after works
+        (bool success,) = (userList[_referrerID]).call{value: regShare}("");
+        require(success, 'Transaction failed!');
         // registration done. Emit event
-        emit regLevelEvent(msg.sender, userList[_referrerID], now);
+        emit regLevelEvent(msg.sender, userList[_referrerID], block.timestamp);
+        return success;
+        
     }
     
     // Payment function for a level 
@@ -209,14 +194,15 @@ contract SmartGenie {
                 
                 users[payer].incomeCount[payLevel]= users[payer].incomeCount[payLevel]+1; 
                 
-                bool sent = false;
-                sent = address(uint160(payer)).send(LEVEL_PRICE[payLevel]);
-        
-                if (sent) {
-                    emit getMoneyForLevelEvent(payer, msg.sender, payLevel, now);
+               // sent = address(uint160(payer)).send(LEVEL_PRICE[payLevel]); remove this after works
+                (bool success,) = (address(uint160(payer))).call{value: LEVEL_PRICE[payLevel]}("");
+                require(success, 'Transaction failed!');
+
+                if (success) {
+                    emit getMoneyForLevelEvent(payer, msg.sender, payLevel, block.timestamp);
                 }
-                if(!sent) {
-                    emit lostMoneyForLevelEvent(payer, msg.sender, payLevel, now);
+                if(!success) {
+                    emit lostMoneyForLevelEvent(payer, msg.sender, payLevel, block.timestamp);
                 }
             }
         }
@@ -254,7 +240,7 @@ contract SmartGenie {
                     isLevelUpgradedForAddress[upLevel][payer] ==  false)) {
                 if(!users[payer].isExist) payer = userList[1];
                 
-                //For payer as user1 anyways payment will proceed, so no need to update incomecount now
+                //For payer as user1 anyways payment will proceed, so no need to update incomecount block.timestamp
                 if(payer != userList[1]) {
                     users[payer].incomeCount[upLevel] = users[payer].incomeCount[upLevel]+1;
                     isPayNeed = false;
@@ -309,7 +295,7 @@ contract SmartGenie {
                         if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
                             users[payer1].referrerID == 1 || users[payer1].referrerID == 2) { 
                                 
-                            if(!users[userList[users[payer1].referrerID]].isExist || users[secReferrer].referrerID == 0) { 
+                            if(!users[userList[users[payer1].referrerID]].isExist) { 
                                 _eligiblePayer = userList[1] ;
                             } else {
                             _eligiblePayer = userList[users[payer1].referrerID];
@@ -445,7 +431,48 @@ contract SmartGenie {
         if(firstLeg == secondLeg) {isSameLeg = true;}
          return  isSameLeg;      
     }
- 
+    
+    
+    // Transfer Promotion Value
+    function withdrawPromotion() public returns (bool) {
+        bool checkCaller = false;
+        uint callerIndex = 0;
+        for (uint i = 0; i < promotionWallets.length; i++) {
+            if (promotionWallets[i] == msg.sender) {
+                checkCaller = true;
+                callerIndex = i;
+                break;
+            }
+        }
+
+        require(checkCaller == true, "Invalid caller");
+        uint maxEligibleAmount = (promAmt * promotionPercantage[callerIndex])/100;
+        // bool sent = false;
+        // sent = address(uint160(msg.sender)).send(maxEligibleAmount); remove this after works
+        (bool success,) = (address(uint160(msg.sender))).call{value: maxEligibleAmount}("");
+        require(success, 'Transaction failed!');
+        return success;
+    }
+    
+    // Withdraw Special Promotion Value
+    function withdrawSplPromotion() public returns (bool) {
+        require(msg.sender == splPromoWallet, "Invalid caller");
+        // bool sent = false;
+        // sent = address(uint160(splPromoWallet)).send(splPromAmt); remove this after works
+        (bool success,) = (address(uint160(splPromoWallet))).call{value: splPromAmt}("");
+        require(success, 'Transaction failed!');
+        return success;
+    }
+     
+    // Withdraw URS Value
+    function transferURS() public returns (bool) {
+        require(msg.sender == ursWallet, "Invalid caller");
+        // bool sent = false;
+        // sent = address(uint160(ursWallet)).send(ursAmt); remove this after works
+        (bool success,) = (address(uint160(ursWallet))).call{value: ursAmt}("");
+        require(success, 'Transaction failed!');
+        return success;
+    }
     
     // index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
     function updatePromotionWallet(address walletAddr, uint index) onlyAdmin public {
@@ -458,65 +485,6 @@ contract SmartGenie {
         } else {
             ursWallet = walletAddr; // for index 5
         }
-    }
-    
-    // Withdraw Promotion Value index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
-    function withdrawPromotion() public returns (bool) {
-        bool checkCaller = false;
-        uint amount;
-        if(msg.sender == splPromoWallet) {
-            amount = splPromAmt;
-            splPromAmt = 0;
-            checkCaller = true;
-        } else if(msg.sender == ursWallet) {
-            amount = (ursAmt*20)/100;
-            ursAmt -= amount;
-            checkCaller = true;
-        }  else {
-            uint callerIndex = 0;
-            for (uint i = 0; i < promotionWallets.length; i++) {
-                if (promotionWallets[i] == msg.sender) {
-                    checkCaller = true;
-                    callerIndex = i;
-                    break;
-                }
-            } 
-            
-            amount = promotionWalletsAmount[callerIndex];
-            promotionWalletsAmount[callerIndex] -= amount;
-            promAmt = promAmt - amount;
-        }
-        require(checkCaller == true, "Invalid caller");
-        bool sent = false;
-        sent = address(uint160(msg.sender)).send(amount);
-        return sent;
-    }
-    
-    
-     // Withdraw Promotion Value index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
-    function checkWithdrawAmount() public view returns (uint) {
-        bool checkCaller = false;
-        uint amount;
-        if(msg.sender == splPromoWallet) {
-            amount = splPromAmt;
-            checkCaller = true;
-        } else if(msg.sender == ursWallet) {
-            amount = ursAmt;
-            checkCaller = true;
-        }  else {
-            uint callerIndex = 0;
-            for (uint i = 0; i < promotionWallets.length; i++) {
-                if (promotionWallets[i] == msg.sender) {
-                    checkCaller = true;
-                    callerIndex = i;
-                    break;
-                }
-            } 
-            amount = promotionWalletsAmount[callerIndex];
-        }
-        
-        require(checkCaller == true, "Invalid caller");
-        return amount/1000000;
     }
     
     // Get smartcontract balance

@@ -29,7 +29,9 @@ const getRegFee = function () {
 const getSmartContractBalance = async function () {
   return await SmartGenie.deployed().then(async function(sm_instance) {
     console.log("contract address: " + await sm_instance.address);
-      return await sm_instance.getContractBalance();
+      const bal =  await sm_instance.getContractBalance();
+      await bal.wait();
+      return bal;
       }).then(async function(retValues) {    
         console.log("Smart Contract Balance : " + await retValues/1000000 + " trx"); 
       })
@@ -49,12 +51,14 @@ const regUser = async function (referrerId, user, regFee) {
     instance = sm_instance;
     console.log("Instance: " + await instance.address);
     await instance.regUser(referrerId, {from: user, value : regFee}); 
-    regUserId = await instance.currUserID();;
+    regUserId = await instance.currUserID();
+    await regUserId.wait();
     return [regUserId, user];
   }).then(async function(retValues) {    
-    userDetails = await getUserDetails(retValues[1])
-    console.log("Registered User Id : " + retValues[0]);
-    console.log("Registered User Details : " + retValues[1]);
+    const userDetails = await getUserDetails(retValues[1])
+    userDetails.wait();
+    console.log("Registered User Id : " + userDetails[0]);
+    console.log("Registered User Details : " + userDetails[1]);
   })
 }
 
