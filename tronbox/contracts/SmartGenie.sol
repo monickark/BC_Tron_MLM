@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Unlicensed
 
-pragma solidity ^0.8.12;
+pragma solidity 0.8.12;
 
 /** 
 * @custom:dev-run-script ./test/TestSG.js
@@ -267,6 +267,7 @@ contract SmartGenie {
          return (payer, isPayNeed, isSameLeg);
     }
     
+   
     function findEligiblePayer(address _referrer, uint256 _regLevel, uint256 _levelEligibility) internal returns (address, address){
            address _eligiblePayer;
             address _tempreferrer = _referrer; 
@@ -281,19 +282,12 @@ contract SmartGenie {
                      
                      address payer1 = userList[users[_tempreferrer].referrerID]; //6
                      address secReferrer = userList[users[payer1].referrerID]; //6
-                     
-                     if(_regLevel == 2) {
-                         secReferrer = userList[users[secReferrer].referrerID]; 
-                     }
-                     
-                     if(_regLevel == 3) {
-                         address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                         secReferrer = userList[users[secReferrer1].referrerID]; 
-                     }
                      //LE initially 
                      if(_levelEligibility < _regLevel+1) { 
                         if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
-                            users[payer1].referrerID == 1 || users[payer1].referrerID == 2) { 
+                            users[payer1].referrerID == 1 
+                            // || users[payer1].referrerID == 2
+                            ) { 
                                 
                             if(!users[userList[users[payer1].referrerID]].isExist) { 
                                 _eligiblePayer = userList[1] ;
