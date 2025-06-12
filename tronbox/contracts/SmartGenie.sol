@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicensed
 
-pragma solidity 0.8.12;
+pragma solidity 0.8.11;
 
 /** 
-* @custom:dev-run-script ./test/TestSG.js
+* @custom:dev-run-script ./tronbox/test/TestSG.js
 */
 
 contract SmartGenie {
@@ -282,13 +282,22 @@ contract SmartGenie {
                      
                      address payer1 = userList[users[_tempreferrer].referrerID]; //6
                      address secReferrer = userList[users[payer1].referrerID]; //6
+
+                     if(_regLevel == 2) {
+                         secReferrer = userList[users[secReferrer].referrerID]; 
+                     }
+                     
+                     if(_regLevel == 3) {
+                         address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                         secReferrer = userList[users[secReferrer1].referrerID]; 
+                     }
+
                      //LE initially 
                      if(_levelEligibility < _regLevel+1) { 
                         if(!users[secReferrer].isExist || users[payer1].referrerID == 0 || 
                             users[payer1].referrerID == 1 
                             // || users[payer1].referrerID == 2
-                            ) { 
-                                
+                            ) {                                 
                             if(!users[userList[users[payer1].referrerID]].isExist) { 
                                 _eligiblePayer = userList[1] ;
                             } else {

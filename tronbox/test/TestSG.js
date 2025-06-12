@@ -1,6 +1,6 @@
 (async function() {
   try {
-    const metadata = JSON.parse(await remix.call('fileManager', 'getFile', 'contracts/artifacts/SmartGenie.json'))
+    const metadata = JSON.parse(await remix.call('fileManager', 'getFile', './tronbox/contracts/artifacts/SmartGenie.json'))
     // the variable web3Provider is a remix global variable object
     const signer = (new ethers.providers.Web3Provider(web3Provider)).getSigner()
     // Create an instance of a Contract Factory
@@ -19,28 +19,13 @@
     // Done! The contract is deployed.
     console.log('contract deployed')
     console.log(contract.getContractBalance());
+    
+    // await token.connect(signers[1]).mint(signers[0].address, 1001);
+    // await contract.regUser(1, {from: ", value : 50}); 
+    // regUserId = await instance.currUserID();
+    // await regUserId.wait();
+
   } catch (e) {
     console.log(e.message)
   }
 })();
-
-const regUser = async function (contract, referrerId, user, regFee) {
-console.log("\n*************************************************************************************");
-console.log("Registering new user.....");
-var instance, regUserId;
-console.log("referrerId : "+ referrerId +  " user : " + user +" regFee : " + regFee);
-
-return SmartGenie.deployed().then(async function(sm_instance) {
-  instance = sm_instance;
-  console.log("Instance: " + await instance.address);
-  await instance.regUser(referrerId, {from: user, value : regFee}); 
-  regUserId = await instance.currUserID();
-  await regUserId.wait();
-  return [regUserId, user];
-}).then(async function(retValues) {    
-  const userDetails = await getUserDetails(retValues[1])
-  userDetails.wait();
-  console.log("Registered User Id : " + userDetails[0]);
-  console.log("Registered User Details : " + userDetails[1]);
-})
-}

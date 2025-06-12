@@ -41,7 +41,7 @@ Then, run the migration with:
     },
     compilers: {
       solc: {
-        version: '0.5.12'
+        version: '0.8.11'
       }
     }
   },
