@@ -47,8 +47,8 @@ contract SmartGenie {
     uint256 ursAmt = 0;
     uint256 regFee = 50 ether;
     uint256 regShare = (regFee*10)/100; // 10% of reg fee
-    uint256 promotionShare = (regFee*5)/100; // 5% 0f reg fee
-    uint256 splPromoShare = (regFee*8)/100; // 8% 0f reg fee
+    uint256 promotionShare = (regFee*9)/100; // 5% 0f reg fee
+    uint256 splPromoShare = (regFee*1)/100; // 8% 0f reg fee
     
     event regLevelEvent(address indexed _user, address indexed _referrer, uint _time);
     event getMoneyForLevelEvent(address indexed _user, address indexed _referral, uint _level, uint _time);
@@ -70,7 +70,7 @@ contract SmartGenie {
         promotionWallets = [_prWallet1, _prWallet2, _prWallet3, _prWallet4];
         
         // Setting the price for buying each level
-        LEVEL_PRICE[1] = (regFee*30)/100;
+        LEVEL_PRICE[1] = (regFee*80)/100;
         LEVEL_PRICE[2] = LEVEL_PRICE[1]*2;
         LEVEL_PRICE[3] = LEVEL_PRICE[2]*2;
         LEVEL_PRICE[4] = LEVEL_PRICE[3]*2;
@@ -272,25 +272,53 @@ contract SmartGenie {
            address _eligiblePayer;
             address _tempreferrer = _referrer; 
                 
-                if(users[_referrer].referrerID == 1) {
-                 _eligiblePayer = userList[users[_referrer].referrerID];
-                } else {
+                
                // find eligible payer 
-                for(int i=0; i<12; i++) { 
-                     uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
-                     _levelEligibility = users[_tempreferrer].levelEligibility[_lelevel]; 
-                     
-                     address payer1 = userList[users[_tempreferrer].referrerID]; //6
-                     address secReferrer = userList[users[payer1].referrerID]; //6
+                for(int i=0; i<9; i++) { 
+                    // while looping if eligiblepayer = id 1 n previous loop just break and proceed no need of checking le or anything else
+                    if(users[_referrer].referrerID == 1 || _eligiblePayer == userList[1]) {
+                        break;
+                    } else {
+                        uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
+                        _levelEligibility = users[_tempreferrer].levelEligibility[_lelevel]; 
+                        
+                        address payer1 = userList[users[_tempreferrer].referrerID]; //6
+                        address secReferrer = userList[users[payer1].referrerID]; //6
 
-                     if(_regLevel == 2) {
-                         secReferrer = userList[users[secReferrer].referrerID]; 
-                     }
-                     
-                     if(_regLevel == 3) {
-                         address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                         secReferrer = userList[users[secReferrer1].referrerID]; 
-                     }
+                        if(_regLevel == 2) {
+                            secReferrer = userList[users[secReferrer].referrerID]; 
+                        }
+                        
+                        if(_regLevel == 3) {
+                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                            secReferrer = userList[users[secReferrer1].referrerID]; 
+                        }
+                        else if(_regLevel == 4) {
+                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                            secReferrer = userList[users[secReferrer2].referrerID]; 
+                        } 
+                        else if(_regLevel == 5) {
+                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                            address secReferrer3 = userList[users[secReferrer2].referrerID]; 
+                            secReferrer = userList[users[secReferrer3].referrerID]; 
+                        }
+                        else if(_regLevel == 6) {
+                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                            address secReferrer3 = userList[users[secReferrer2].referrerID]; 
+                            address secReferrer4 = userList[users[secReferrer3].referrerID]; 
+                            secReferrer = userList[users[secReferrer4].referrerID]; 
+                        }
+                        else if(_regLevel == 7) {
+                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                            address secReferrer3 = userList[users[secReferrer2].referrerID]; 
+                            address secReferrer4 = userList[users[secReferrer3].referrerID];                          
+                            address secReferrer5 = userList[users[secReferrer4].referrerID]; 
+                            secReferrer = userList[users[secReferrer5].referrerID]; 
+                        }
 
                      //LE initially 
                      if(_levelEligibility < _regLevel+1) { 
@@ -312,8 +340,8 @@ contract SmartGenie {
                          _eligiblePayer = _tempreferrer; 
                          break;
                      }
+                    }
                 }
-            }
             users[_referrer].incomeCount[_regLevel] = users[_referrer].incomeCount[_regLevel]+1; 
             return (_eligiblePayer, _referrer);
     }
