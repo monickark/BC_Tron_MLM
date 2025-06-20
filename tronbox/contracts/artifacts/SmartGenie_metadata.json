@@ -561,11 +561,11 @@
 	},
 	"sources": {
 		"tronbox/contracts/SmartGenie.sol": {
-			"keccak256": "0x004ea04713b0a4bee1f67680c74269ae14c655347038dca3b3706ed4f0a050b1",
+			"keccak256": "0xa99173d1189dda0e2cf84b3cf50389c1d3171687776bbb209e27e48d2fc7c89b",
 			"license": "Unlicensed",
 			"urls": [
-				"bzz-raw://3a6ea6e9cc1c6ebea72a076ac2d280c053f96bed3a23d563f68d073d89352290",
-				"dweb:/ipfs/QmQzDsTFVE2UBobs7HRfE5YSNdmdutZgU4BMumjoq68z7n"
+				"bzz-raw://afab8bcc308022279b551874293f5044b932afd55dfa260ae9c832d513301b58",
+				"dweb:/ipfs/QmVM2WLoZNGYDTkbz9GjJFhe4Ck9ckcCYXaw281yfdCwko"
 			]
 		}
 	},

@@ -79,9 +79,6 @@ contract SmartGenie {
         LEVEL_PRICE[7] = LEVEL_PRICE[6]*2;
         LEVEL_PRICE[8] = LEVEL_PRICE[7]*2;
         LEVEL_PRICE[9] = LEVEL_PRICE[8]*2;
-        LEVEL_PRICE[10] = LEVEL_PRICE[9]*2;
-        LEVEL_PRICE[11] = LEVEL_PRICE[10]*2;
-        LEVEL_PRICE[12] = LEVEL_PRICE[11]*2;
 
         // Create contract deployer as first user
         UserStruct storage userStruct = users[adminWallet];
@@ -285,40 +282,46 @@ contract SmartGenie {
                         address payer1 = userList[users[_tempreferrer].referrerID]; //6
                         address secReferrer = userList[users[payer1].referrerID]; //6
 
-                        if(_regLevel == 2) {
+                        for (uint j=1; j< _regLevel; j++) {
+                            if(secReferrer == userList[1]) {
+                                break;
+                            }
                             secReferrer = userList[users[secReferrer].referrerID]; 
                         }
+                        // if(_regLevel == 2) {
+                        //     secReferrer = userList[users[secReferrer].referrerID]; 
+                        // }
                         
-                        if(_regLevel == 3) {
-                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                            secReferrer = userList[users[secReferrer1].referrerID]; 
-                        }
-                        else if(_regLevel == 4) {
-                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                            secReferrer = userList[users[secReferrer2].referrerID]; 
-                        } 
-                        else if(_regLevel == 5) {
-                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                            address secReferrer3 = userList[users[secReferrer2].referrerID]; 
-                            secReferrer = userList[users[secReferrer3].referrerID]; 
-                        }
-                        else if(_regLevel == 6) {
-                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                            address secReferrer3 = userList[users[secReferrer2].referrerID]; 
-                            address secReferrer4 = userList[users[secReferrer3].referrerID]; 
-                            secReferrer = userList[users[secReferrer4].referrerID]; 
-                        }
-                        else if(_regLevel == 7) {
-                            address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                            address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                            address secReferrer3 = userList[users[secReferrer2].referrerID]; 
-                            address secReferrer4 = userList[users[secReferrer3].referrerID];                          
-                            address secReferrer5 = userList[users[secReferrer4].referrerID]; 
-                            secReferrer = userList[users[secReferrer5].referrerID]; 
-                        }
+                        // else if(_regLevel == 3) {
+                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                        //     secReferrer = userList[users[secReferrer1].referrerID]; 
+                        // }
+                        // else if(_regLevel == 4) {
+                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                        //     secReferrer = userList[users[secReferrer2].referrerID]; 
+                        // } 
+                        // else if(_regLevel == 5) {
+                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                        //     address secReferrer3 = userList[users[secReferrer2].referrerID]; 
+                        //     secReferrer = userList[users[secReferrer3].referrerID]; 
+                        // }
+                        // else if(_regLevel == 6) {
+                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                        //     address secReferrer3 = userList[users[secReferrer2].referrerID]; 
+                        //     address secReferrer4 = userList[users[secReferrer3].referrerID]; 
+                        //     secReferrer = userList[users[secReferrer4].referrerID]; 
+                        // }
+                        // else if(_regLevel == 7) {
+                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
+                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
+                        //     address secReferrer3 = userList[users[secReferrer2].referrerID]; 
+                        //     address secReferrer4 = userList[users[secReferrer3].referrerID];                          
+                        //     address secReferrer5 = userList[users[secReferrer4].referrerID]; 
+                        //     secReferrer = userList[users[secReferrer5].referrerID]; 
+                        // }
 
                      //LE initially 
                      if(_levelEligibility < _regLevel+1) { 
