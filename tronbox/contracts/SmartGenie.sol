@@ -127,7 +127,7 @@ contract SmartGenie {
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
         if(referrerReferralLength != 1 || _referrerID == 1) {
             // Payment for the level
-            payment(1, msg.sender, referrerReferralLength, false);
+            payment(1, msg.sender, referrerReferralLength, false, false);
         } else {
             users[userList[_referrerID]].levelEligibility.push(1);
             address referrer = userList[_referrerID]; //2
@@ -145,18 +145,24 @@ contract SmartGenie {
     }
     
     // Payment function for a level 
-    function payment(uint _reglevel, address _user, uint256 length, bool loop) internal { //4
+    function payment(uint _regLevel, address _user, uint256 length, bool loop, bool isCheckingUpgradeFromRenewal) internal { //4
         address payer;
         bool isRenewal = false;
         bool isSameLeg = false;
         bool isPayNeed = true;
         uint256 levelEligibility; 
-        uint256 payLevel = _reglevel;
+        uint256 payLevel = _regLevel;
         
-        // level upgrade
-        if (length == 2) {
-          (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
-          payLevel = _reglevel+1;
+        // no action for first payment of any level
+        // if (length == 1 && isCheckingUpgradeFromRenewal == true)  {
+        //   isPayNeed = false;
+        //   _regLevel = 1;
+        //   payer = userList[users[_user].referrerID];
+        // } 
+         // level upgrade
+        if ((length == 1 && isCheckingUpgradeFromRenewal == true) || length == 2) {
+          (payer, isPayNeed, isSameLeg) = levelUpgrade (_regLevel, _user, levelEligibility, isSameLeg, isPayNeed);
+          payLevel = _regLevel+1;
         } 
          // level renewal
         else if (length >= 20 && length % 20 == 0) { 
@@ -164,27 +170,31 @@ contract SmartGenie {
         } 
         // level renewal
         else if (length >= 4 && length % 4 == 0) { 
-           (payer, isRenewal) = levelRenewal(loop, _user, _reglevel);
+            // (payer, isPayNeed, isSameLeg) = levelUpgrade (_regLevel, _user, levelEligibility, isSameLeg, isPayNeed);
+           (payer, isRenewal) = levelRenewal(loop, _user, _regLevel, levelEligibility);
+           payLevel = _regLevel;
         } 
         // other payments
         else {
             payer = userList[users[_user].referrerID];
         } 
         
-        // All txion for user1 should proceed
-        if (isPayNeed || !users[payer].isExist || payer == userList[1]) {
+        // All txion for user1 should proceed && nothing can proceed for first payment
+        if ((isPayNeed || payer == userList[1])) {
             (loop, length) = checkLoopRequired(payer, payLevel, length, isRenewal, isSameLeg);
              if(loop) {  
             // IsPayneed & !isSameleg refers the loop is for new level upgrade
                  if(isPayNeed && !isSameLeg && length==2) {
-                    _reglevel = payLevel;
+                    _regLevel = payLevel;
                 }
                 // Renewal of level upgrade 4th payment
-                 if(isPayNeed && !isSameLeg && length == 4 && payLevel>1) {
-                    _reglevel = payLevel;
+                 if(isPayNeed && !isSameLeg && length == 4 && payLevel>=1) {
+                    _regLevel = payLevel;
+                    length = users[payer].incomeCount[payLevel]+1;
+                    isCheckingUpgradeFromRenewal = true;
                 }
                
-               payment(_reglevel, payer, length, true); 
+               payment(_regLevel, payer, length, true, isCheckingUpgradeFromRenewal); 
             } else {
             /* PROCEEDS PAYMENT */
                 if(!users[payer].isExist) payer = userList[1];
@@ -273,7 +283,7 @@ contract SmartGenie {
                // find eligible payer 
                 for(int i=0; i<9; i++) { 
                     // while looping if eligiblepayer = id 1 n previous loop just break and proceed no need of checking le or anything else
-                    if(users[_referrer].referrerID == 1 || _eligiblePayer == userList[1]) {
+                    if(users[_referrer].referrerID == 1 || _eligiblePayer == userList[1] || _tempreferrer == userList[1]) {
                         break;
                     } else {
                         uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
@@ -348,8 +358,59 @@ contract SmartGenie {
             users[_referrer].incomeCount[_regLevel] = users[_referrer].incomeCount[_regLevel]+1; 
             return (_eligiblePayer, _referrer);
     }
+
+    function findRenewalPayer(address _referrer, uint256 _regLevel, uint256 _levelEligibility) internal returns (address, address){
+           address _eligiblePayer;
+            address _tempreferrer = _referrer; 
+            address secReferrer = _tempreferrer;
+               // find eligible payer 
+                for(int i=0; i<9; i++) { 
+                    // while looping if eligiblepayer = id 1 n previous loop just break and proceed no need of checking le or anything else
+                    if(users[_referrer].referrerID == 1 || _eligiblePayer == userList[1]) {
+                        break;
+                    } else {
+                        for (uint j=0; j< _regLevel; j++) {
+                            if(_tempreferrer == userList[1]) {
+                                break;
+                            }
+                            secReferrer = userList[users[secReferrer].referrerID]; 
+                        }
+                        if( secReferrer == userList[1]) {
+                            _eligiblePayer = secReferrer;
+                            break;
+                        } else {
+                            uint256 _lelevel = users[secReferrer].levelEligibility.length-1;
+                            _levelEligibility = users[secReferrer].levelEligibility[_lelevel]; 
+
+                     //LE initially 
+                            if(_levelEligibility < _regLevel) { 
+                                if(!users[secReferrer].isExist || users[secReferrer].referrerID == 0 || 
+                                    users[secReferrer].referrerID == 1 
+                                    // || users[payer1].referrerID == 2
+                                    ) {                                 
+                                    if(!users[userList[users[secReferrer].referrerID]].isExist) { 
+                                        _eligiblePayer = userList[1] ;
+                                    } else {
+                                    _eligiblePayer = userList[users[secReferrer].referrerID];
+                                    }
+                                    break;
+                                } 
+                                _tempreferrer = secReferrer; 
+                                _eligiblePayer = secReferrer; 
+                                
+                            } else {
+                                _eligiblePayer = secReferrer; 
+                                break;
+                            }
+                                }
+                        
+                    }
+                }
+            users[_referrer].incomeCount[_regLevel] = users[_referrer].incomeCount[_regLevel]+1; 
+            return (_eligiblePayer, _referrer);
+    }
     
-    function levelRenewal(bool _loop, address _user, uint256 _regLevel)internal returns(address, bool) {
+    function levelRenewal(bool _loop, address _user, uint256 _regLevel, uint256 _levelEligibility)internal returns(address, bool) {
         bool _isRenewal = true;
         address referrer; address payer;
          if(!_loop) {
@@ -357,7 +418,8 @@ contract SmartGenie {
          } else { referrer = _user; }
         
         users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
-        payer = userList[users[referrer].referrerID]; 
+       // payer = userList[users[referrer].referrerID]; 
+       (payer,) = findRenewalPayer(referrer, _regLevel, _levelEligibility);
         if(!users[payer].isExist) payer = userList[1];
         
         return (payer, _isRenewal);
@@ -404,7 +466,7 @@ contract SmartGenie {
                 loop = true;
             }
         }
-        
+
         // payers second level upgrade received
          else if(tempPaymentCount == 2 &&
           users[_payer].referrerID!=0 && !isRenewal && !isSameLeg) {
@@ -421,7 +483,14 @@ contract SmartGenie {
         else if(tempPaymentCount == 1 &&
           users[_payer].referrerID==0) {
            if(!users[_payer].isExist) _payer = userList[1];
-        }
+        } 
+         // through renewal payment user get first new level payment hold in contract
+         else if(tempPaymentCount == 1 &&
+          users[_payer].referrerID!=0 && isRenewal) {
+           if(!users[_payer].isExist) _payer = userList[1];
+                loop = true;
+                length = tempPaymentCount;
+        } 
       
         return (loop, length);
     }
