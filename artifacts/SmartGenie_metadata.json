@@ -24,17 +24,7 @@
 					},
 					{
 						"internalType": "address",
-						"name": "_prWallet4",
-						"type": "address"
-					},
-					{
-						"internalType": "address",
 						"name": "_sprWallet",
-						"type": "address"
-					},
-					{
-						"internalType": "address",
-						"name": "_rewardWallet",
 						"type": "address"
 					},
 					{
@@ -384,19 +374,6 @@
 			},
 			{
 				"inputs": [],
-				"name": "rewardWallet",
-				"outputs": [
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
 				"name": "splPromoWallet",
 				"outputs": [
 					{
@@ -561,11 +538,11 @@
 	},
 	"sources": {
 		"tronbox/contracts/SmartGenie.sol": {
-			"keccak256": "0xd91927648636e9ae5acb829e02de330fe49f56f748dc196828c94d360a4a1ba3",
+			"keccak256": "0xc1bb2c502495d8258b44afda3bdfb2f5d8d2771fbbebf937e8b806e0865202bf",
 			"license": "Unlicensed",
 			"urls": [
-				"bzz-raw://68d507a04443e8e24d23be211af97164217de7b2f558c409013d8c893d1de165",
-				"dweb:/ipfs/QmNtHFmiUW2qmHSH7H3exuERLDvxZdnnH5tficbhbqrVmL"
+				"bzz-raw://d7ae49805361fc13d87ec99881188803c148f7cd258347089674e98e32b84aaa",
+				"dweb:/ipfs/QmY9LWLyQNSQDejzN88WTQrzcmH18RfAPbYke8sj2MYA2h"
 			]
 		}
 	},

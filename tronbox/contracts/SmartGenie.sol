@@ -20,7 +20,6 @@ contract SmartGenie {
     address public adminWallet;
     address public ursWallet;
     address public splPromoWallet;
-    address public rewardWallet;
  
     struct UserStruct {
         bool isExist;
@@ -32,7 +31,7 @@ contract SmartGenie {
         uint[] levelEligibility;
     }
     address[4] public promotionWallets;
-    uint8[4] public promotionPercantage = [2,1,1,1];
+    uint8[4] public promotionPercantage = [5,3,1];
     
     mapping(uint => uint) public LEVEL_PRICE;
     mapping(address => UserStruct) public users;
@@ -60,14 +59,12 @@ contract SmartGenie {
     }
     
     constructor(address _prWallet1, address _prWallet2, 
-                address _prWallet3, address _prWallet4, address _sprWallet,
-                address _rewardWallet, address _ursWallet) {
+                address _prWallet3, address _sprWallet, address _ursWallet) {
         // Contract deployer will be the owner wallet 
         adminWallet = msg.sender;
         ursWallet = _ursWallet;
         splPromoWallet = _sprWallet;
-        rewardWallet = _rewardWallet;
-        promotionWallets = [_prWallet1, _prWallet2, _prWallet3, _prWallet4];
+        promotionWallets = [_prWallet1, _prWallet2, _prWallet3];
         
         // Setting the price for buying each level
         LEVEL_PRICE[1] = (regFee*80)/100;
@@ -127,7 +124,7 @@ contract SmartGenie {
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
         if(referrerReferralLength != 1 || _referrerID == 1) {
             // Payment for the level
-            payment(1, msg.sender, referrerReferralLength, false, false);
+            payment(1, msg.sender, referrerReferralLength, false);
         } else {
             users[userList[_referrerID]].levelEligibility.push(1);
             address referrer = userList[_referrerID]; //2
@@ -145,56 +142,48 @@ contract SmartGenie {
     }
     
     // Payment function for a level 
-    function payment(uint _regLevel, address _user, uint256 length, bool loop, bool isCheckingUpgradeFromRenewal) internal { //4
+    function payment(uint _reglevel, address _user, uint256 length, bool loop) internal { //4
         address payer;
         bool isRenewal = false;
         bool isSameLeg = false;
         bool isPayNeed = true;
         uint256 levelEligibility; 
-        uint256 payLevel = _regLevel;
+        uint256 payLevel = _reglevel;
         
-        // no action for first payment of any level
-        // if (length == 1 && isCheckingUpgradeFromRenewal == true)  {
-        //   isPayNeed = false;
-        //   _regLevel = 1;
-        //   payer = userList[users[_user].referrerID];
-        // } 
-         // level upgrade
-        if ((length == 1 && isCheckingUpgradeFromRenewal == true) || length == 2) {
-          (payer, isPayNeed, isSameLeg) = levelUpgrade (_regLevel, _user, levelEligibility, isSameLeg, isPayNeed);
-          payLevel = _regLevel+1;
+        // level upgrade
+        if (length == 2) {
+          (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
+          payLevel = _reglevel+1;
         } 
          // level renewal
         else if (length >= 20 && length % 20 == 0) { 
-           payer = rewardWallet;
+           payer = userList[1];
         } 
         // level renewal
         else if (length >= 4 && length % 4 == 0) { 
-            // (payer, isPayNeed, isSameLeg) = levelUpgrade (_regLevel, _user, levelEligibility, isSameLeg, isPayNeed);
-           (payer, isRenewal) = levelRenewal(loop, _user, _regLevel, levelEligibility);
-           payLevel = _regLevel;
+            // (payer, isPayNeed, isSameLeg) = levelUpgrade (_reglevel, _user, levelEligibility, isSameLeg, isPayNeed);
+           (payer, isRenewal) = levelRenewal(loop, _user, _reglevel, levelEligibility);
+           payLevel = _reglevel;
         } 
         // other payments
         else {
             payer = userList[users[_user].referrerID];
         } 
         
-        // All txion for user1 should proceed && nothing can proceed for first payment
-        if ((isPayNeed || payer == userList[1])) {
+        // All txion for user1 should proceed
+        if (isPayNeed || !users[payer].isExist || payer == userList[1]) {
             (loop, length) = checkLoopRequired(payer, payLevel, length, isRenewal, isSameLeg);
              if(loop) {  
             // IsPayneed & !isSameleg refers the loop is for new level upgrade
                  if(isPayNeed && !isSameLeg && length==2) {
-                    _regLevel = payLevel;
+                    _reglevel = payLevel;
                 }
                 // Renewal of level upgrade 4th payment
                  if(isPayNeed && !isSameLeg && length == 4 && payLevel>=1) {
-                    _regLevel = payLevel;
-                    length = users[payer].incomeCount[payLevel]+1;
-                    isCheckingUpgradeFromRenewal = true;
+                    _reglevel = payLevel;
                 }
                
-               payment(_regLevel, payer, length, true, isCheckingUpgradeFromRenewal); 
+               payment(_reglevel, payer, length, true); 
             } else {
             /* PROCEEDS PAYMENT */
                 if(!users[payer].isExist) payer = userList[1];
@@ -283,7 +272,7 @@ contract SmartGenie {
                // find eligible payer 
                 for(int i=0; i<9; i++) { 
                     // while looping if eligiblepayer = id 1 n previous loop just break and proceed no need of checking le or anything else
-                    if(users[_referrer].referrerID == 1 || _eligiblePayer == userList[1] || _tempreferrer == userList[1]) {
+                    if(users[_referrer].referrerID == 1 || _eligiblePayer == userList[1]) {
                         break;
                     } else {
                         uint256 _lelevel = users[_tempreferrer].levelEligibility.length-1;
@@ -298,40 +287,6 @@ contract SmartGenie {
                             }
                             secReferrer = userList[users[secReferrer].referrerID]; 
                         }
-                        // if(_regLevel == 2) {
-                        //     secReferrer = userList[users[secReferrer].referrerID]; 
-                        // }
-                        
-                        // else if(_regLevel == 3) {
-                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                        //     secReferrer = userList[users[secReferrer1].referrerID]; 
-                        // }
-                        // else if(_regLevel == 4) {
-                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                        //     secReferrer = userList[users[secReferrer2].referrerID]; 
-                        // } 
-                        // else if(_regLevel == 5) {
-                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                        //     address secReferrer3 = userList[users[secReferrer2].referrerID]; 
-                        //     secReferrer = userList[users[secReferrer3].referrerID]; 
-                        // }
-                        // else if(_regLevel == 6) {
-                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                        //     address secReferrer3 = userList[users[secReferrer2].referrerID]; 
-                        //     address secReferrer4 = userList[users[secReferrer3].referrerID]; 
-                        //     secReferrer = userList[users[secReferrer4].referrerID]; 
-                        // }
-                        // else if(_regLevel == 7) {
-                        //     address secReferrer1 = userList[users[secReferrer].referrerID]; 
-                        //     address secReferrer2 = userList[users[secReferrer1].referrerID]; 
-                        //     address secReferrer3 = userList[users[secReferrer2].referrerID]; 
-                        //     address secReferrer4 = userList[users[secReferrer3].referrerID];                          
-                        //     address secReferrer5 = userList[users[secReferrer4].referrerID]; 
-                        //     secReferrer = userList[users[secReferrer5].referrerID]; 
-                        // }
 
                      //LE initially 
                      if(_levelEligibility < _regLevel+1) { 
@@ -415,10 +370,11 @@ contract SmartGenie {
         address referrer; address payer;
          if(!_loop) {
              referrer = userList[users[_user].referrerID];
-         } else { referrer = _user; }
-        
-        users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
-       // payer = userList[users[referrer].referrerID]; 
+         } else { 
+            referrer = _user; 
+            // commenting out bcoz on no loop renewal income count shown twice : have to check for loop renewal
+            // users[referrer].incomeCount[_regLevel] = users[referrer].incomeCount[_regLevel]+1; 
+         }
        (payer,) = findRenewalPayer(referrer, _regLevel, _levelEligibility);
         if(!users[payer].isExist) payer = userList[1];
         
@@ -466,7 +422,7 @@ contract SmartGenie {
                 loop = true;
             }
         }
-
+        
         // payers second level upgrade received
          else if(tempPaymentCount == 2 &&
           users[_payer].referrerID!=0 && !isRenewal && !isSameLeg) {
@@ -483,14 +439,7 @@ contract SmartGenie {
         else if(tempPaymentCount == 1 &&
           users[_payer].referrerID==0) {
            if(!users[_payer].isExist) _payer = userList[1];
-        } 
-         // through renewal payment user get first new level payment hold in contract
-         else if(tempPaymentCount == 1 &&
-          users[_payer].referrerID!=0 && isRenewal) {
-           if(!users[_payer].isExist) _payer = userList[1];
-                loop = true;
-                length = tempPaymentCount;
-        } 
+        }
       
         return (loop, length);
     }
