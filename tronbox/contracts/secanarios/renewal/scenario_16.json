@@ -24,10 +24,8 @@
       "timestamp": 1750581786781,
       "record": {
         "value": "0",
-        "inputs": "(address,address,address,address,address,address,address)",
+        "inputs": "(address,address,address,address,address)",
         "parameters": [
-          "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2",
-          "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2",
           "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2",
           "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2",
           "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2",

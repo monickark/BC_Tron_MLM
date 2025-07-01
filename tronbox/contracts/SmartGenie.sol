@@ -7,15 +7,6 @@ pragma solidity 0.8.11;
 */
 
 contract SmartGenie {
-    // 1. 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
-    // 2. 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-    // 3. 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
-    // 5. 0x617F2E2fD72FD9D5503197092aC168c91465E7f2
-    // 6. 0x17F6AD8Ef982297579C203069C1DbfFE4348c372
-    // 7. 0x5c6B0f7Bf3E7ce046039Bd8FABdfD3f9F5021678
-    // 8. 0x03C6FcED478cBbC9a4FAB34eF9f40767739D1Ff7
-    // 9. 0x1aE0EA34a72D944a8C7603FfB3eC30a6669E454C
-    // 16.0x8bE8582bE8C77E06fBE63e7c54671A9444B347F6
     
     address public adminWallet;
     address public ursWallet;
@@ -30,8 +21,6 @@ contract SmartGenie {
         mapping(uint => uint) incomeCount;
         uint[] levelEligibility;
     }
-    address[4] public promotionWallets;
-    uint8[4] public promotionPercantage = [5,3,1];
     
     mapping(uint => uint) public LEVEL_PRICE;
     mapping(address => UserStruct) public users;
@@ -39,10 +28,14 @@ contract SmartGenie {
     mapping(uint256 => mapping(address => uint256)) public levelCounter;
     mapping(uint256 => mapping(address => address)) public levelUpgradePayments;
     mapping(uint256 => mapping(address => bool)) public isLevelUpgradedForAddress;
+
+
+    address[3] public promotionWallets;
+    uint8[3] public promotionPercantage = [5,3,1];
+    uint256[3] public promotionAmounts;
     
     uint public currUserID = 0;
     uint256 splPromAmt = 0;
-    uint256 promAmt = 0;
     uint256 ursAmt = 0;
     uint256 regFee = 50 ether;
     uint256 regShare = (regFee*10)/100; // 10% of reg fee
@@ -115,11 +108,13 @@ contract SmartGenie {
         // push the caller to referral under referrerid
         users[userList[_referrerID]].referral.push(msg.sender);
         
-        // update split wallet balances
+        // update admin wallet balances from regfee
         ursAmt += LEVEL_PRICE[1];
-        promAmt += promotionShare;
         splPromAmt += splPromoShare;
-        
+        promotionAmounts[0] = promotionAmounts[0] + (promotionShare * promotionPercantage[0])/100;
+        promotionAmounts[1] = promotionAmounts[1] + (promotionShare * promotionPercantage[1])/100;
+        promotionAmounts[2] = promotionAmounts[2] + (promotionShare * promotionPercantage[2])/100;
+                
         //  A particular users joined 2 referalls, for the 2nd referall transfer amount to contract
         uint referrerReferralLength = users[userList[_referrerID]].referral.length;
         if(referrerReferralLength != 1 || _referrerID == 1) {
@@ -483,51 +478,9 @@ contract SmartGenie {
         if(firstLeg == secondLeg) {isSameLeg = true;}
          return  isSameLeg;      
     }
-    
-    
-    // Transfer Promotion Value
-    function withdrawPromotion() public returns (bool) {
-        bool checkCaller = false;
-        uint callerIndex = 0;
-        for (uint i = 0; i < promotionWallets.length; i++) {
-            if (promotionWallets[i] == msg.sender) {
-                checkCaller = true;
-                callerIndex = i;
-                break;
-            }
-        }
 
-        require(checkCaller == true, "Invalid caller");
-        uint maxEligibleAmount = (promAmt * promotionPercantage[callerIndex])/100;
-        // bool sent = false;
-        // sent = address(uint160(msg.sender)).send(maxEligibleAmount); remove this after works
-        (bool success,) = (address(uint160(msg.sender))).call{value: maxEligibleAmount}("");
-        require(success, 'Transaction failed!');
-        return success;
-    }
-    
-    // Withdraw Special Promotion Value
-    function withdrawSplPromotion() public returns (bool) {
-        require(msg.sender == splPromoWallet, "Invalid caller");
-        // bool sent = false;
-        // sent = address(uint160(splPromoWallet)).send(splPromAmt); remove this after works
-        (bool success,) = (address(uint160(splPromoWallet))).call{value: splPromAmt}("");
-        require(success, 'Transaction failed!');
-        return success;
-    }
-     
-    // Withdraw URS Value
-    function transferURS() public returns (bool) {
-        require(msg.sender == ursWallet, "Invalid caller");
-        // bool sent = false;
-        // sent = address(uint160(ursWallet)).send(ursAmt); remove this after works
-        (bool success,) = (address(uint160(ursWallet))).call{value: ursAmt}("");
-        require(success, 'Transaction failed!');
-        return success;
-    }
-    
     // index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
-    function updatePromotionWallet(address walletAddr, uint index) onlyAdmin public {
+    function updateWallet(address walletAddr, uint index) onlyAdmin public {
         require(msg.sender == adminWallet, "Invalid caller");
         require(index <= 5, "Invalid Index");
         if(index <=3 ) {
@@ -538,7 +491,72 @@ contract SmartGenie {
             ursWallet = walletAddr; // for index 5
         }
     }
+
+  // index 0-2 : promotion wallets, 3 : SplPromotionWallet, 4: URS Wallet
+    function withdrawWallet(uint8 walletIndex) public returns (bool) {
+    require(walletIndex <= 4, "Invalid wallet Index;");
+        uint maxEligibleAmount;
+        // verify user and find amount for the user of the promotion wallet
+        if (walletIndex<=2) {
+            bool checkCaller = false;
+            uint callerIndex = 0;
+            for (uint i = 0; i < promotionWallets.length; i++) {
+                if (promotionWallets[i] == msg.sender) {
+                    checkCaller = true;
+                    callerIndex = i;
+                    break;
+                }
+            }
+            require(checkCaller == true, "Invalid caller");
+            maxEligibleAmount = promotionAmounts[callerIndex];
+            promotionAmounts[callerIndex] = 0;
+        } else if (walletIndex == 3) {
+            require(msg.sender == splPromoWallet, "invalid caller");
+            maxEligibleAmount = splPromAmt;
+            splPromAmt = 0;
+        } else {
+            require(msg.sender == ursWallet, "invalid caller");
+            maxEligibleAmount = (ursAmt*10)/100; // withdraw only 10% urs amt everytime
+            ursAmt -= maxEligibleAmount;
+        }
+        // bool sent = false;
+        // sent = address(uint160(msg.sender)).send(maxEligibleAmount); remove this after works
+        require(maxEligibleAmount > 0 , "No amount to withdraw");
+        (bool success,) = (address(uint160(msg.sender))).call{value: maxEligibleAmount}("");
+        require(success, 'Transaction failed!');
+        return success;
+    }
     
+     // index 0-2 : promotion wallets, 3 : SplPromotionWallet, 4: URS Wallet
+    function checkWalletBalance(uint8 walletIndex) public view returns (uint256) {
+        require(walletIndex <= 4, "Invalid wallet Index;");
+        uint maxEligibleAmount;
+        // verify user and find amount for the user of the promotion wallet
+        if (walletIndex<=2) {
+            bool checkCaller = false;
+            uint callerIndex = 0;
+            for (uint i = 0; i < promotionWallets.length; i++) {
+                if (promotionWallets[i] == msg.sender) {
+                    checkCaller = true;
+                    callerIndex = i;
+                    break;
+                }
+            }
+            require(checkCaller == true, "Invalid caller");
+            maxEligibleAmount = promotionAmounts[callerIndex];
+        } else if (walletIndex == 3) {
+            require(msg.sender == splPromoWallet, "invalid caller");
+            maxEligibleAmount = splPromAmt;
+        } else {
+            require(msg.sender == ursWallet, "invalid caller");
+            maxEligibleAmount = (ursAmt*10)/100; // withdraw only 10% urs amt everytime
+            
+        }
+        
+        return maxEligibleAmount/1 ether;
+    }
+    
+
     // Get smartcontract balance
     function getContractBalance() public view returns(uint256) {
         return address(this).balance/1000000;
