@@ -479,17 +479,15 @@ contract SmartGenie {
          return  isSameLeg;      
     }
 
-    // index 0-3 : promotion wallets, 4 : SplPromotionWallet, 5: URS Wallet
+    // index 0-2 : promotion wallets, 3 : SplPromotionWallet, 4: URS Wallet
     function updateWallet(address walletAddr, uint index) onlyAdmin public {
         require(msg.sender == adminWallet, "Invalid caller");
-        require(index <= 5, "Invalid Index");
-        if(index <=3 ) {
+        require(index < 4 && index !=2, "Invalid Index");
+        if(index < 2  ) { // update 1st & 2nd promotion wallets address index 0 & 1
             promotionWallets[index-1] = walletAddr;
-        } else if (index == 4) {
+        } else  { // update special promotion wallet address index 3
             splPromoWallet = walletAddr;
-        } else {
-            ursWallet = walletAddr; // for index 5
-        }
+        } 
     }
 
   // index 0-2 : promotion wallets, 3 : SplPromotionWallet, 4: URS Wallet
